@@ -99,6 +99,15 @@ An expandable chat panel (toggle via the **AI Chat** button, top-right) lets use
 
 This gives users a natural-language interface to ask questions such as *"Why is Winter Peak price so much higher than Shoulder?"* or *"What happens if I double ZVC capital cost?"* — similar to working with an analyst who has the model open in front of them.
 
+## User Guide
+
+A comprehensive pedagogic guide is built into the application at [`/guide`](http://localhost:8180/guide). It explains:
+
+- The logic behind each input section (LDC blocks, sub-blocks, demand tiers, supply costs)
+- How the welfare-maximising LP works, in plain language and formal notation
+- How to interpret each output chart and metric
+- How to use the AI chat assistant effectively, including how to get an API key
+
 ## Project Structure
 
 | File | Purpose |
@@ -106,6 +115,7 @@ This gives users a natural-language interface to ask questions such as *"Why is 
 | `model.py` | LP formulation and solver (PuLP/CBC) |
 | `app.py` | Flask web server and plot generation |
 | `templates/index.html` | Single-page UI with currency selector |
+| `templates/guide.html` | Pedagogic user guide ("Get Flexing") |
 | `requirements.txt` | Python dependencies |
 | `Dockerfile` | Container build |
 | `docker-compose.yml` | Orchestration (port 8180) |

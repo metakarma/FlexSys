@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Get Flexing — How to Use Peaky Flexers</title>
+<style>
+:root {
+  --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+  --text: #1e293b; --muted: #64748b; --accent: #3b82f6;
+  --accent-dark: #2563eb; --success: #10b981; --warn: #f59e0b;
+  --danger: #ef4444; --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7;
+}
+.container { max-width: 820px; margin: 0 auto; padding: 32px 24px 64px; }
+
+header {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: white; padding: 40px 0 36px;
+}
+header .container { padding-bottom: 0; }
+header h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+header p { color: #94a3b8; margin-top: 6px; font-size: 15px; }
+header a { color: #60a5fa; text-decoration: underline; }
+
+h2 {
+  font-size: 22px; font-weight: 700; margin: 44px 0 12px;
+  padding-bottom: 6px; border-bottom: 2px solid var(--accent);
+  color: var(--accent-dark);
+}
+h3 {
+  font-size: 17px; font-weight: 600; margin: 28px 0 8px;
+  color: var(--text);
+}
+p, li { font-size: 15px; color: var(--text); }
+p { margin-bottom: 12px; }
+ul, ol { margin: 0 0 16px 24px; }
+li { margin-bottom: 6px; }
+
+.callout {
+  background: #eff6ff; border-left: 4px solid var(--accent);
+  padding: 14px 18px; border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 18px 0; font-size: 14px;
+}
+.callout.warn {
+  background: #fef3c7; border-left-color: var(--warn);
+}
+.callout.success {
+  background: #ecfdf5; border-left-color: var(--success);
+}
+
+.chat-example {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px; margin: 16px 0;
+  box-shadow: var(--shadow);
+}
+.chat-example .q {
+  background: var(--accent); color: #fff; padding: 8px 12px;
+  border-radius: 10px; display: inline-block; font-size: 14px;
+  margin-bottom: 10px; max-width: 85%;
+}
+.chat-example .a {
+  background: var(--bg); border: 1px solid var(--border);
+  padding: 10px 14px; border-radius: 10px; font-size: 13px;
+  line-height: 1.6; color: var(--text);
+}
+
+code {
+  background: #e2e8f0; padding: 1px 5px; border-radius: 3px;
+  font-size: 13px; font-family: 'SF Mono', Consolas, monospace;
+}
+.math {
+  display: block; text-align: center; margin: 16px 0;
+  font-style: italic; font-size: 15px; color: var(--muted);
+  overflow-x: auto;
+}
+
+table {
+  width: 100%; border-collapse: collapse; font-size: 14px;
+  margin: 12px 0 20px;
+}
+th {
+  text-align: left; padding: 8px 10px; background: var(--bg);
+  font-weight: 600; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .3px; color: var(--muted);
+}
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+
+.back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--accent); font-weight: 600; font-size: 14px;
+  text-decoration: none; margin-top: 12px;
+}
+.back-link:hover { text-decoration: underline; }
+
+.toc {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 24px; margin: 24px 0;
+  box-shadow: var(--shadow);
+}
+.toc h3 { margin-top: 0; }
+.toc ol { margin-bottom: 0; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>Get Flexing</h1>
+    <p>A practical guide to understanding and using the Peaky Flexers electricity market model</p>
+    <a href="/" class="back-link" style="color:#60a5fa;margin-top:12px;">&#8592; Back to the model</a>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#big-picture">The Big Picture</a></li>
+    <li><a href="#inputs">Understanding the Inputs</a>
+      <ol style="margin-top:4px;">
+        <li><a href="#ldc-blocks">Load Duration Curve Blocks</a></li>
+        <li><a href="#zvc-profile">ZVC Availability Profile (Sub-Blocks)</a></li>
+        <li><a href="#demand-tiers">Demand Tiers &amp; Expandable Demand</a></li>
+        <li><a href="#supply-costs">Supply-Side Technology Costs</a></li>
+      </ol>
+    </li>
+    <li><a href="#optimisation">How the Optimisation Works</a>
+      <ol style="margin-top:4px;">
+        <li><a href="#plain-language">In Plain Language</a></li>
+        <li><a href="#formal">The Formal Problem</a></li>
+      </ol>
+    </li>
+    <li><a href="#outputs">Reading the Outputs</a>
+      <ol style="margin-top:4px;">
+        <li><a href="#out-summary">Market Equilibrium Summary</a></li>
+        <li><a href="#out-capacity">Optimal Capacity Mix</a></li>
+        <li><a href="#out-input-ldc">Input Load Duration Curve</a></li>
+        <li><a href="#out-gen-ldc">Generation Duration Curve</a></li>
+        <li><a href="#out-dispatch-gw">Demand &amp; Supply by Sub-Block (GW)</a></li>
+        <li><a href="#out-dispatch-gwh">Energy by Sub-Block (GWh)</a></li>
+        <li><a href="#out-flex-gw">Demand Flexibility (GW)</a></li>
+        <li><a href="#out-energy-flows">Energy Transfers (GWh)</a></li>
+        <li><a href="#out-storage">Storage Activity</a></li>
+        <li><a href="#out-detail">Detailed Sub-Block Results</a></li>
+      </ol>
+    </li>
+    <li><a href="#ai-chat">Using the AI Chat Assistant</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="big-picture">1. The Big Picture</h2>
+
+<p>Peaky Flexers is a <strong>welfare-maximising linear program</strong> (LP) for an electricity market. It answers a deceptively simple question: <em>if we had to design an electricity system from scratch, what mix of generation and storage capacity would maximise the total value that consumers get from electricity, minus the cost of providing it?</em></p>
+
+<p>The model works with three types of supply technology&mdash;zero-variable-cost renewables (ZVC), gas peakers, and battery storage&mdash;and a demand side that can flex: consumers can shift demand to cheaper periods, expand consumption when prices are low, or curtail when the cost of supply exceeds the value of the electricity to them.</p>
+
+<p>The key output is a set of <strong>market-clearing prices</strong>&mdash;one for each time period. These prices emerge naturally from the optimisation: they are the <em>shadow prices</em> on the energy-balance constraints, representing the cost to the system of serving one more megawatt-hour of demand in that period. In a well-functioning market, these are the prices that would prevail.</p>
+
+<div class="callout">
+  <strong>Why does this matter?</strong> Understanding how electricity prices form&mdash;and what drives them to differ across time periods&mdash;is essential for anyone thinking about energy policy, investment in generation or storage, or the economics of demand flexibility.
+</div>
+
+<!-- ================================================================ -->
+<h2 id="inputs">2. Understanding the Inputs</h2>
+
+<p>The model page has four input sections. Each represents a distinct part of the electricity system. Here is what each one means and why it is structured the way it is.</p>
+
+<!-- ---- LDC Blocks ---- -->
+<h3 id="ldc-blocks">2.1 Load Duration Curve Blocks</h3>
+
+<p>Real electricity demand varies hour by hour across the year. Rather than modelling all 8,760 hours individually, the model uses a <strong>Load Duration Curve</strong> (LDC)&mdash;a standard tool in energy economics that sorts hours by demand level.</p>
+
+<p>The year is divided into three blocks:</p>
+
+<table>
+  <tr><th>Block</th><th>What it represents</th><th>Default hours</th></tr>
+  <tr><td><strong>Winter Peak</strong></td><td>The coldest, darkest hours when demand is highest and renewable output is lowest</td><td>300</td></tr>
+  <tr><td><strong>Shoulder</strong></td><td>A large middle band&mdash;spring, autumn, and milder winter days</td><td>3,000</td></tr>
+  <tr><td><strong>Low Demand</strong></td><td>Summer and overnight hours when demand is lowest and (often) renewables are abundant</td><td>5,460</td></tr>
+</table>
+
+<p>You only set the <strong>hours</strong> for each block. The total should sum to 8,760 (one year). The demand levels come from the tier definitions below.</p>
+
+<div class="callout">
+  <strong>Intuition:</strong> These blocks are not calendar months. Think of them as buckets: all hours with similar demand and weather conditions are grouped together. The Winter Peak block might include just 300 hours spread across December and January; Low Demand captures thousands of hours in summer and at night.
+</div>
+
+<!-- ---- ZVC Profile ---- -->
+<h3 id="zvc-profile">2.2 ZVC Availability Profile (Sub-Blocks)</h3>
+
+<p>The wind does not blow constantly during winter, nor does the sun always shine in summer. To capture this <strong>intermittency</strong>, each LDC block is split into two sub-blocks:</p>
+
+<ul>
+  <li><strong>Low Renewables</strong>&mdash;hours when renewable output is scarce (e.g. calm, overcast days in winter)</li>
+  <li><strong>High Renewables</strong>&mdash;hours when renewable output is plentiful (e.g. windy afternoons)</li>
+</ul>
+
+<p>For each sub-block you set two parameters:</p>
+
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><strong>% Hours</strong></td><td>What fraction of the block's hours fall in this sub-block (must sum to 100%)</td></tr>
+  <tr><td><strong>% Renewables Availability</strong></td><td>What fraction of installed ZVC capacity is available during these hours</td></tr>
+</table>
+
+<p>For example, the default Winter Peak is split 10/90: for just 10% of winter peak hours (30 hours), only 15% of installed ZVC capacity is available. For the remaining 90% (270 hours), 80% is available. This creates a large price differential between the two sub-blocks, and it is precisely this differential that makes <strong>storage valuable within a block</strong>&mdash;storage can charge when renewables are plentiful and discharge when they are scarce, even within the same season.</p>
+
+<div class="callout success">
+  <strong>Key insight:</strong> Without sub-blocks, the model would see each season as uniform, and storage would only be valuable for shifting energy between seasons. Sub-blocks make storage valuable even within a single season&mdash;which is how real batteries operate.
+</div>
+
+<!-- ---- Demand Tiers ---- -->
+<h3 id="demand-tiers">2.3 Demand Tiers &amp; Expandable Demand</h3>
+
+<p>Not all electricity demand is equally valuable. A hospital's life-support system has a very different willingness to pay than a dishwasher that could run at 3am instead of 6pm. The model captures this by dividing demand in each block into three tiers:</p>
+
+<ul>
+  <li><strong>High-value demand</strong> &mdash; critical loads that consumers would pay a very high price to keep running (e.g. hospitals, data centres, industrial processes). These have a high Value of Lost Load (VoLL) and a high cost to shift.</li>
+  <li><strong>Mid-value demand</strong> &mdash; important but somewhat flexible loads (e.g. commercial heating, manufacturing). Moderate VoLL and shift cost.</li>
+  <li><strong>Low-value demand</strong> &mdash; deferrable or interruptible loads (e.g. EV charging, water heating, non-urgent industrial). Low VoLL and low shift cost.</li>
+</ul>
+
+<p>For each tier you set three parameters:</p>
+
+<table>
+  <tr><th>Parameter</th><th>Meaning</th></tr>
+  <tr><td><strong>Quantity (GW)</strong></td><td>How many gigawatts of this tier's demand are present during the block</td></tr>
+  <tr><td><strong>VoLL (&pound;/MWh)</strong></td><td>Value of Lost Load: the maximum price this demand is willing to pay. If the clearing price exceeds VoLL, this demand goes unserved ("curtailed").</td></tr>
+  <tr><td><strong>Shift Cost (&pound;/MWh)</strong></td><td>The cost of moving this demand to a later, cheaper block. Demand can only shift <em>downward</em>: Winter Peak &rarr; Shoulder &rarr; Low Demand. It cannot shift upward.</td></tr>
+</table>
+
+<p><strong>Expandable demand</strong> represents new consumption that would switch on if prices fell low enough&mdash;think of energy-intensive industries that would locate near cheap power, or electric heating that becomes attractive when electricity prices drop. You specify a quantity (GW) and an activation value (&pound;/MWh). If the clearing price drops below this value, the expandable demand activates.</p>
+
+<div class="callout">
+  <strong>Intuition:</strong> Demand tiers create a <em>downward-sloping demand curve</em> for each block. High-value demand bids high and is served first. Low-value demand may get curtailed if supply is expensive. The shift cost determines when it is worthwhile for demand to move to a cheaper time period rather than be served (or curtailed) in its original block.
+</div>
+
+<!-- ---- Supply Costs ---- -->
+<h3 id="supply-costs">2.4 Supply-Side Technology Costs</h3>
+
+<p>The model does <strong>not</strong> pre-set any generation capacities. Instead, it decides how much of each technology to build, balancing capital costs against the value of the electricity they produce. There are three technologies:</p>
+
+<h3 style="margin-top:16px;">Zero-Variable-Cost (ZVC) Generation</h3>
+<p>Renewables (wind, solar) and nuclear. Once built, they produce electricity at zero fuel cost, but their output depends on weather conditions (captured by the availability profile above). The only input is the annualised capital cost (&pound;/kW/year).</p>
+
+<h3>Gas Peaker</h3>
+<p>A flexible thermal plant that can run whenever needed but burns gas. You set:</p>
+<ul>
+  <li><strong>Capital cost</strong> (&pound;/kW/year) &mdash; the annualised cost of building the plant</li>
+  <li><strong>Variable cost</strong> (&pound;/MWh) &mdash; the fuel and O&amp;M cost of running it</li>
+  <li><strong>Carbon price</strong> (&pound;/tCO&#8322;) &mdash; a carbon tax or shadow price, multiplied by the emission factor to add to variable cost</li>
+  <li><strong>Emission factor</strong> (tCO&#8322;/MWh) &mdash; carbon intensity of the gas plant</li>
+</ul>
+
+<h3>Battery Storage</h3>
+<p>Storage has two capacity dimensions:</p>
+<ul>
+  <li><strong>Power capacity</strong> (GW) &mdash; how fast it can charge or discharge, with cost in &pound;/kW/year</li>
+  <li><strong>Energy capacity</strong> (GWh) &mdash; how much energy it can store, with cost in &pound;/kWh/year</li>
+</ul>
+<p>The energy cost is amortised over the number of <strong>cycles per year</strong> you specify (default 365), since a battery that cycles daily spreads its capital cost over many more MWh than one that cycles once a year.</p>
+<p><strong>Round-trip efficiency</strong> (default 95%) means that for every MWh charged, only 0.95 MWh is available to discharge. The 5% is lost as heat. This creates an implicit cost: the storage must buy cheap and sell dear enough to cover not just capital costs but also this energy loss.</p>
+
+<div class="callout">
+  <strong>No fuel cost for storage:</strong> Unlike gas, storage has no direct fuel cost. Its "cost" comes from efficiency losses and capital amortisation. The model works this out endogenously&mdash;the implied cycling cost is an <em>output</em>, not an input.
+</div>
+
+<!-- ================================================================ -->
+<h2 id="optimisation">3. How the Optimisation Works</h2>
+
+<h3 id="plain-language">3.1 In Plain Language</h3>
+
+<p>The model asks: <em>what system design and operating pattern makes society best off?</em></p>
+
+<p>It simultaneously decides:</p>
+<ol>
+  <li><strong>How much capacity to build</strong> for each technology (ZVC, gas, storage power, storage energy)</li>
+  <li><strong>How to dispatch</strong> each technology in every sub-block (6 sub-blocks total)</li>
+  <li><strong>How much demand to serve, shift, or curtail</strong> in each tier and sub-block</li>
+  <li><strong>How to operate storage</strong>&mdash;when to charge, when to discharge, and how much energy to hold</li>
+</ol>
+
+<p>The objective is to <strong>maximise net welfare</strong>: the total value that consumers place on the electricity they receive, minus the total cost of providing it (both capital and operating costs).</p>
+
+<p>Think of it as a social planner trying to make the best possible use of available resources. The planner values each MWh of served demand at its VoLL, credits shifted demand at VoLL minus the shift cost, and charges for gas generation at its variable cost and all technologies at their capital cost.</p>
+
+<p>The optimisation is subject to physical and economic constraints:</p>
+<ul>
+  <li><strong>Energy balance:</strong> In every sub-block, total supply (ZVC + gas + storage discharge) must be at least as large as total demand (served tiers + shifted-in demand + expandable demand + storage charging).</li>
+  <li><strong>Capacity limits:</strong> Nothing can dispatch more than its installed capacity. ZVC is further limited by the availability fraction in each sub-block.</li>
+  <li><strong>Demand limits:</strong> You cannot serve more than the available quantity of each tier, and you cannot shift more than is available.</li>
+  <li><strong>Shifting rules:</strong> Demand can only shift <em>downward</em> (from expensive to cheaper blocks). Shifting conserves total energy: the GWh shifted out of the source block must equal the GWh arriving in destination sub-blocks.</li>
+  <li><strong>Storage physics:</strong> Energy stored cannot exceed energy capacity. The storage level evolves sequentially through all 6 sub-blocks (charge adds, discharge subtracts, efficiency applies to charging). The system is cyclical: the level at the end of the year must equal the level at the start.</li>
+</ul>
+
+<p>The <strong>market-clearing prices</strong> are not directly chosen. They emerge as shadow prices on the energy-balance constraints&mdash;they tell you the marginal value to society of one additional MWh of supply in each sub-block. In an efficient market, these would be the wholesale electricity prices.</p>
+
+<h3 id="formal">3.2 The Formal Problem</h3>
+
+<p>For those who want the mathematics, here is the LP formulation. The model maximises:</p>
+
+<div class="math">
+  max &ensp; &sum;<sub>b,i</sub> h<sub>b,i</sub> &middot; [ &sum;<sub>t</sub> VoLL<sub>b,t</sub> &middot; served<sub>b,i,t</sub> + v<sub>b</sub><sup>exp</sup> &middot; expand<sub>b,i</sub> &minus; c<sub>gas</sub><sup>var</sup> &middot; gas<sub>b,i</sub> ]
+  &ensp; + &ensp; &sum;<sub>shifts</sub> h<sub>src</sub> &middot; (VoLL<sub>t</sub> &minus; shiftcost<sub>t</sub>) &middot; shift_out<sub>src,t,dest</sub>
+  &ensp; &minus; &ensp; C<sub>zvc</sub> &middot; K<sub>zvc</sub> &minus; C<sub>gas</sub> &middot; K<sub>gas</sub> &minus; C<sub>sto_pw</sub> &middot; K<sub>sto_pw</sub> &minus; (C<sub>sto_en</sub> / cycles) &middot; K<sub>sto_en</sub>
+</div>
+
+<p>Where <em>b</em> indexes blocks, <em>i</em> indexes sub-blocks within each block, <em>t</em> indexes demand tiers, <em>h</em> are hours, <em>K</em> are capacity variables, and <em>C</em> are capital costs. The variable cost of gas includes any carbon adder: c<sub>gas</sub><sup>var</sup> = variable_cost + carbon_price &times; emission_factor.</p>
+
+<p>Subject to (for all sub-blocks <em>b,i</em>):</p>
+<ul>
+  <li>Energy balance: &ensp; zvc<sub>b,i</sub> + gas<sub>b,i</sub> + sto_dis<sub>b,i</sub> &minus; sto_chg<sub>b,i</sub> &ge; &sum;<sub>t</sub> served<sub>b,i,t</sub> + shift_in<sub>b,i</sub> + expand<sub>b,i</sub></li>
+  <li>Capacity: &ensp; zvc<sub>b,i</sub> &le; avail<sub>b,i</sub> &middot; K<sub>zvc</sub>, &ensp; gas<sub>b,i</sub> &le; K<sub>gas</sub>, &ensp; sto_dis<sub>b,i</sub> &le; K<sub>sto_pw</sub>, &ensp; sto_chg<sub>b,i</sub> &le; K<sub>sto_pw</sub></li>
+  <li>Demand: &ensp; served<sub>b,i,t</sub> + shift_out<sub>b,t</sub> &le; quantity<sub>b,t</sub></li>
+  <li>Energy conservation: &ensp; shift_out<sub>src,t,dest</sub> &middot; h<sub>src</sub> = &sum;<sub>i</sub> shift_in<sub>src,t,dest,i</sub> &middot; h<sub>dest,i</sub></li>
+  <li>Storage dynamics: &ensp; level<sub>b,i</sub> = level<sub>prev</sub> + h<sub>b,i</sub> &middot; (&eta; &middot; sto_chg<sub>b,i</sub> &minus; sto_dis<sub>b,i</sub>)</li>
+  <li>Cyclical: &ensp; level<sub>last</sub> = level<sub>start</sub></li>
+  <li>Storage capacity: &ensp; level<sub>b,i</sub> &le; K<sub>sto_en</sub></li>
+</ul>
+
+<p>Shadow prices on the energy-balance constraints, divided by the sub-block's hours, give clearing prices in &pound;/MWh.</p>
+
+<!-- ================================================================ -->
+<h2 id="outputs">4. Reading the Outputs</h2>
+
+<p>After you click <strong>Optimise the System</strong>, the results page shows several sections. Here is what each one tells you.</p>
+
+<!-- ---- Summary ---- -->
+<h3 id="out-summary">4.1 Market Equilibrium Summary</h3>
+
+<p>A row of metric cards showing the headline results at a glance:</p>
+<ul>
+  <li><strong>Sub-block prices</strong> &mdash; the market-clearing price for each of the 6 sub-blocks. Higher prices indicate scarcity; lower prices indicate surplus. Compare Winter Peak Low Renewables (typically the highest) with Low Demand High Renewables (typically the lowest) to see the range of price differentials driving storage and shifting.</li>
+  <li><strong>Load-Weighted Average Price</strong> &mdash; the average price weighted by GWh consumed in each sub-block. This is what a "typical" MWh costs.</li>
+  <li><strong>Capacity built</strong> &mdash; GW of ZVC, gas, and storage power, plus GWh of storage energy.</li>
+  <li><strong>Welfare metrics</strong> &mdash; net welfare, consumer value, variable cost, and capital cost. Net welfare = consumer value &minus; variable cost &minus; capital cost.</li>
+</ul>
+
+<div class="callout">
+  <strong>What to look for:</strong> If prices are very high in one sub-block, the system is capacity-constrained there. If prices are very similar everywhere, there may be excess capacity or very effective storage/shifting smoothing prices across periods.
+</div>
+
+<!-- ---- Capacity ---- -->
+<h3 id="out-capacity">4.2 Optimal Capacity Mix</h3>
+
+<p>Two charts side by side:</p>
+<ul>
+  <li><strong>Bar chart</strong> &mdash; the GW of power capacity for each technology. This shows the physical scale of the system.</li>
+  <li><strong>Pie chart</strong> &mdash; the annual capital cost split. Storage power and energy costs are combined into a single "Storage" wedge to avoid confusing energy and capacity concepts.</li>
+</ul>
+<p>Together, these tell you how the system spends its investment budget. A system dominated by ZVC will have high ZVC capital cost but zero variable cost. A system with more gas will have lower capital cost but higher variable cost.</p>
+
+<!-- ---- Input LDC ---- -->
+<h3 id="out-input-ldc">4.3 Input Load Duration Curve</h3>
+
+<p>This shows the <strong>raw demand profile</strong> before any optimisation. Sub-blocks are sorted from highest to lowest GW, and the three demand tiers are stacked within each sub-block (low-value at the bottom, high-value at the top). This is what the demand side "looks like" before the model decides what to do with it.</p>
+
+<p>Use this chart as a reference point. After you look at the optimised results, come back here to see how much has changed&mdash;how much demand was shifted, curtailed, or served by different sources.</p>
+
+<!-- ---- Generation LDC ---- -->
+<h3 id="out-gen-ldc">4.4 Generation Duration Curve</h3>
+
+<p>This is the post-optimisation counterpart of the input LDC. It shows <strong>total generation</strong> in each sub-block, broken down by source (ZVC in green, gas in red, storage discharge in blue). Sub-blocks are sorted by total generation from left to right.</p>
+
+<p>Each sub-block is labelled with its clearing price. Hatched areas indicate curtailed demand.</p>
+
+<div class="callout">
+  <strong>How to read it:</strong> The shape of this curve tells you about the system's economics. If ZVC fills most of the curve and gas only appears on the left (high-demand periods), renewables are dominant. If there is a lot of blue (storage discharge) in the high-demand blocks, storage is playing an important peaking role.
+</div>
+
+<!-- ---- Dispatch GW ---- -->
+<h3 id="out-dispatch-gw">4.5 Demand &amp; Supply by Sub-Block (GW)</h3>
+
+<p>A 2&times;3 grid of stacked bar charts (one per sub-block). Each chart has two bars:</p>
+<ul>
+  <li><strong>Demand bar (left)</strong> &mdash; stacked from bottom: High/Mid/Low-value served demand, shifted-in demand, expandable demand, and storage charging.</li>
+  <li><strong>Supply bar (right)</strong> &mdash; stacked from bottom: ZVC, gas, and storage discharge.</li>
+</ul>
+
+<p>All six charts share the same Y-axis so you can visually compare the scale of demand and supply across sub-blocks. The title of each chart shows the clearing price.</p>
+
+<p>Storage charging appears as <em>demand</em> (it consumes electricity) while storage discharging appears as <em>supply</em> (it provides electricity). This is physically correct&mdash;charging is a load on the system.</p>
+
+<!-- ---- Dispatch GWh ---- -->
+<h3 id="out-dispatch-gwh">4.6 Energy by Sub-Block (GWh)</h3>
+
+<p>The same structure as the GW charts, but multiplied by hours to show <strong>energy</strong> (GWh). Each sub-block has its own Y-axis scale because the blocks have very different durations (300 hours vs 5,460 hours), which would make the shorter blocks invisible if they shared an axis.</p>
+
+<p>These charts are important for understanding the total energy balance. A sub-block might have low GW but high GWh if it lasts many hours. Storage is particularly visible here: you can see how much energy in GWh is being moved around the system.</p>
+
+<!-- ---- Flexibility GW ---- -->
+<h3 id="out-flex-gw">4.7 Demand Flexibility (GW)</h3>
+
+<p>Per-block Sankey diagrams showing what happens to demand in each block. Left-side nodes are demand sources (tiers + shifted-in demand + storage charging). Right-side nodes are destinations:</p>
+<ul>
+  <li><strong>Served by Gen</strong> &mdash; met directly by ZVC or gas generation</li>
+  <li><strong>Served by Storage</strong> &mdash; met by battery discharge</li>
+  <li><strong>&rarr; [Block]</strong> &mdash; shifted to a later block (e.g. &rarr; Shoulder means this demand moved from Winter Peak to Shoulder)</li>
+  <li><strong>Not Served</strong> &mdash; curtailed (VoLL was too low relative to clearing price)</li>
+  <li><strong>Into Storage</strong> &mdash; electricity consumed for charging batteries</li>
+</ul>
+
+<p>The width of each flow band is proportional to the GW. This chart only appears when there is flexibility activity (shifting, curtailment, or storage) in the system.</p>
+
+<!-- ---- Energy Flows ---- -->
+<h3 id="out-energy-flows">4.8 Energy Transfers (GWh)</h3>
+
+<p>A system-level Sankey diagram showing <strong>energy transfers between sub-blocks</strong>. This is fundamentally different from the flexibility Sankeys above: while those show what happens <em>within</em> a block, this shows what moves <em>between</em> blocks.</p>
+
+<p>Left nodes are energy exporters (sub-blocks that charge storage or shed demand). Right nodes are energy importers (sub-blocks that discharge storage or receive shifted demand), plus efficiency losses.</p>
+
+<p>The diagram visually distinguishes two types of flows:</p>
+<ul>
+  <li><strong>Battery storage</strong> (solid rectangles, more opaque bands) &mdash; energy physically moved via charging and discharging</li>
+  <li><strong>Behavioural demand shift</strong> (dashed, hatched rectangles, lighter bands) &mdash; demand moved by consumer behaviour change, including curtailment ("Not Served")</li>
+</ul>
+
+<p>This is perhaps the most informative single chart. It reveals the full pattern of energy arbitrage: where is energy coming from, where is it going, and how much is lost to efficiency?</p>
+
+<!-- ---- Storage ---- -->
+<h3 id="out-storage">4.9 Storage Activity</h3>
+
+<p>Two charts plus summary metrics:</p>
+<ul>
+  <li><strong>Summary cards</strong> &mdash; total GWh charged and discharged, efficiency loss, average charge and discharge prices, and the implied cycling cost.</li>
+  <li><strong>Power chart (top)</strong> &mdash; bar chart of charge/discharge GW in each sub-block. This shows <em>when</em> storage is active.</li>
+  <li><strong>Energy level chart (bottom)</strong> &mdash; line chart tracking the GWh stored across the year. The dashed line shows total energy capacity. The cyclical constraint means this line starts and ends at the same level.</li>
+</ul>
+
+<div class="callout">
+  <strong>The implied cycling cost</strong> is the effective cost per MWh of using storage, calculated from the prices at which it charges and discharges and the efficiency loss. If the average charge price is &pound;65/MWh and discharge price is &pound;120/MWh with 95% efficiency, the implied cost is 65/0.95 &minus; 120 &asymp; &minus;&pound;52/MWh (a profit, not a cost). This number tells you whether the price spread is enough to justify the capital investment.
+</div>
+
+<!-- ---- Detail ---- -->
+<h3 id="out-detail">4.10 Detailed Sub-Block Results</h3>
+
+<p>The final section gives you the full numerical detail for each of the 6 sub-blocks: every demand tier (available, served, lost, shifted out), every supply technology (dispatched vs available), expandable demand activation, storage level, and the clearing price.</p>
+
+<p>This is where you go to verify specific numbers or understand exactly what is happening in a particular sub-block. If a Sankey diagram shows an unexpected flow, the detail tables will tell you exactly which tiers and technologies are involved.</p>
+
+<!-- ================================================================ -->
+<h2 id="ai-chat">5. Using the AI Chat Assistant</h2>
+
+<p>Peaky Flexers includes a built-in AI assistant powered by Anthropic's Claude. Click the <strong>AI Chat</strong> button in the top-right corner to open the chat panel.</p>
+
+<h3>What can you ask?</h3>
+
+<p>The AI has access to the complete model source code, your current input values, and your latest optimisation results. This means it can reason about <em>your specific scenario</em>&mdash;not just generic electricity economics. Good questions include:</p>
+
+<ul>
+  <li>"Why is the Winter Peak Low Renewables price so much higher than the other sub-blocks?"</li>
+  <li>"What is driving the storage investment? Where is the arbitrage opportunity?"</li>
+  <li>"If I doubled the carbon price, what would you expect to happen to the gas capacity?"</li>
+  <li>"Why is demand being shifted from Shoulder to Low Demand? That seems counterintuitive."</li>
+  <li>"Can you explain the energy balance for the Shoulder High Renewables sub-block?"</li>
+</ul>
+
+<p>Here is an example of the kind of conversation you might have:</p>
+
+<div class="chat-example">
+  <div class="q">Why are Winter Peak prices at &pound;441/MWh? That seems very high.</div>
+  <div class="a">
+    <p>The price of &pound;441/MWh in Winter Peak Low Renewables reflects <strong>extreme scarcity</strong>. During these 30 hours, only 15% of installed ZVC capacity is available. The marginal consumer willing to pay up to their VoLL sets the price.</p>
+    <p>Looking at the results: all 10 GW of High-value demand (VoLL &pound;15,000/MWh) is served, all 20 GW of Mid-value demand (VoLL &pound;800/MWh) is served, but some Low-value demand (VoLL &pound;100/MWh) is being curtailed. The clearing price settles between the VoLL of the last tier being served and the marginal cost of the next unit of supply.</p>
+    <p>Storage is discharging at full power here, and gas peakers are running flat out. The high price is what is needed to justify the capital investment in gas peakers that only run for a few hundred hours per year.</p>
+  </div>
+</div>
+
+<h3>Getting an API key</h3>
+
+<p>To use the AI chat, you need an Anthropic API key. The model defaults to <strong>Claude Opus 4.6</strong>, which provides excellent analysis of the model's economics. To get a key:</p>
+
+<ol>
+  <li>Visit <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a></li>
+  <li>Create an account (or sign in)</li>
+  <li>Navigate to <strong>API Keys</strong> in the dashboard</li>
+  <li>Click <strong>Create Key</strong>, give it a name, and copy the key</li>
+  <li>Paste it into the API key field in the chat panel</li>
+</ol>
+
+<p>Your API key is stored in your browser's local storage and is only sent to the Peaky Flexers server to proxy requests to Anthropic. It is never stored on the server.</p>
+
+<div class="callout warn">
+  <strong>A note of caution:</strong> Claude Opus 4.6 is remarkably good at interpreting the model's results and explaining electricity market economics. However, like all AI models, it can occasionally make mistakes&mdash;particularly with complex numerical reasoning or edge cases in the LP formulation. Treat its answers as a knowledgeable colleague's interpretation, not as gospel. If something seems wrong, check the detailed sub-block results tables, or ask the AI to show its working.
+</div>
+
+<p>The <strong>Clear Chat</strong> button resets the conversation history, which is useful when you change input parameters and run a new optimisation&mdash;the old context will no longer match the new results.</p>
+
+<!-- ================================================================ -->
+
+<div style="margin-top:48px; text-align:center;">
+  <a href="/" class="back-link" style="font-size:16px;">&#8592; Back to the model &mdash; get flexing!</a>
+</div>
+
+</div>
+
+<footer>Peaky Flexers &mdash; Electricity Market LP Model</footer>
+
+</body>
+</html>

@@ -41,6 +41,11 @@ def index():
     return render_template("index.html", defaults=json.dumps(defaults))
 
 
+@app.route("/guide")
+def guide():
+    return render_template("guide.html")
+
+
 @app.route("/optimise", methods=["POST"])
 def optimise():
     try:
