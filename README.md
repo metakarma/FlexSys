@@ -1,4 +1,4 @@
-# FlexSys — Electricity Market LP Optimiser
+# Peaky Flexers — Electricity Market LP Optimiser
 
 A web application that solves a welfare-maximising linear program for electricity market price formation. The model simultaneously determines **optimal capacity investment** and **dispatch** for three supply technologies — zero-variable-cost renewables (ZVC), gas peakers, and battery storage — across a three-block Load Duration Curve with **ZVC intermittency sub-blocks**, flexible (shiftable) and expandable demand.
 
@@ -54,7 +54,7 @@ Storage round-trip efficiency is modelled physically (default 95%). Energy losse
 
 ### Demand
 
-Demand is divided into High/Mid/Low value tiers per block, each with a Value of Lost Load (VoLL) and a shift cost. Demand can only shift **downward** (Winter Peak → Shoulder → Summer).
+Demand is divided into High/Mid/Low value tiers per block, each with a Value of Lost Load (VoLL) and a shift cost. Demand can only shift **downward** (Winter Peak → Shoulder → Low Demand).
 
 Default shift costs:
 
@@ -62,7 +62,7 @@ Default shift costs:
 |-------|------|-----|-----|
 | Winter Peak | £1,000/MWh | £500/MWh | £50/MWh |
 | Shoulder | £800/MWh | £40/MWh | £8/MWh |
-| Summer | £20/MWh | £10/MWh | £5/MWh |
+| Low Demand | £20/MWh | £10/MWh | £5/MWh |
 
 Expandable demand activates when the price drops below its value:
 
@@ -70,7 +70,7 @@ Expandable demand activates when the price drops below its value:
 |-------|----------|-----------------|
 | Winter Peak | 100 GW | £40/MWh |
 | Shoulder | 500 GW | £30/MWh |
-| Summer | 1,000 GW | £20/MWh |
+| Low Demand | 1,000 GW | £20/MWh |
 
 ### Prices
 
@@ -83,9 +83,9 @@ With defaults (ZVC £450/kW/yr, Gas £40/kW/yr + £80/MWh, Storage £10/kW + £0
 - **ZVC**: 18.3 GW built
 - **Gas**: 13.2 GW built (peaking in Low-ZVC sub-blocks)
 - **Storage**: 14.1 GW power / 6,499 GWh energy (charges in cheap High-ZVC periods, discharges in expensive Low-ZVC periods)
-- **Clearing prices**: £441/MWh (WP Low), £107/MWh (WP High), £107/MWh (Shoulder Low), £82/MWh (Shoulder High), £80/MWh (Summer Low), £64/MWh (Summer High)
+- **Clearing prices**: £441/MWh (WP Low), £107/MWh (WP High), £107/MWh (Shoulder Low), £82/MWh (Shoulder High), £80/MWh (Low Demand Low), £64/MWh (Low Demand High)
 
-All three technologies coexist. Storage performs seasonal and within-block arbitrage — charging in Summer High ZVC (£64/MWh) and discharging in Winter Peak Low ZVC (£441/MWh).
+All three technologies coexist. Storage performs seasonal and within-block arbitrage — charging in Low Demand High ZVC (£64/MWh) and discharging in Winter Peak Low ZVC (£441/MWh).
 
 ## Project Structure
 

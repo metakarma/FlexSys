@@ -26,9 +26,9 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 def default_inputs() -> dict[str, Any]:
-    blocks = ["Winter Peak", "Shoulder", "Summer"]
-    hours = {"Winter Peak": 300, "Shoulder": 3000, "Summer": 5460}
-    base_load = {"Winter Peak": 60, "Shoulder": 40, "Summer": 20}
+    blocks = ["Winter Peak", "Shoulder", "Low Demand"]
+    hours = {"Winter Peak": 300, "Shoulder": 3000, "Low Demand": 5460}
+    base_load = {"Winter Peak": 60, "Shoulder": 40, "Low Demand": 20}
 
     demand_tiers = {
         "Winter Peak": [
@@ -39,19 +39,19 @@ def default_inputs() -> dict[str, Any]:
         "Shoulder": [
             {"name": "High", "quantity": 8,  "voll": 12000, "shift_cost": 800},
             {"name": "Mid",  "quantity": 18, "voll": 600,   "shift_cost": 40},
-            {"name": "Low",  "quantity": 10, "voll": 80,    "shift_cost": 8},
+            {"name": "Low",  "quantity": 10, "voll": 120,   "shift_cost": 8},
         ],
-        "Summer": [
+        "Low Demand": [
             {"name": "High", "quantity": 5,  "voll": 10000, "shift_cost": 20},
             {"name": "Mid",  "quantity": 10, "voll": 400,   "shift_cost": 10},
-            {"name": "Low",  "quantity": 5,  "voll": 50,    "shift_cost": 5},
+            {"name": "Low",  "quantity": 5,  "voll": 100,   "shift_cost": 5},
         ],
     }
 
     expandable = {
         "Winter Peak": {"quantity": 100,  "value": 40},
         "Shoulder":    {"quantity": 500,  "value": 30},
-        "Summer":      {"quantity": 1000, "value": 20},
+        "Low Demand":  {"quantity": 1000, "value": 20},
     }
 
     zvc_profile = {
@@ -63,7 +63,7 @@ def default_inputs() -> dict[str, Any]:
             {"label": "Low ZVC",  "pct_hours": 20, "availability": 20},
             {"label": "High ZVC", "pct_hours": 80, "availability": 70},
         ],
-        "Summer": [
+        "Low Demand": [
             {"label": "Low ZVC",  "pct_hours": 15, "availability": 10},
             {"label": "High ZVC", "pct_hours": 85, "availability": 90},
         ],
@@ -73,8 +73,11 @@ def default_inputs() -> dict[str, Any]:
         "zvc_capital_cost": 450,
         "gas_capital_cost": 40,
         "gas_variable_cost": 80,
+        "carbon_price": 0,
+        "gas_emission_factor": 0.5,
         "storage_power_cost": 10,
-        "storage_energy_cost": 0.04,
+        "storage_energy_cost": 10,
+        "storage_cycles": 365,
         "storage_efficiency": 95,
     }
 
@@ -104,8 +107,11 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
     zvc_profile = inputs["zvc_profile"]
     supply = inputs["supply"]
 
-    gas_vc = supply["gas_variable_cost"]
+    carbon_adder = supply.get("carbon_price", 0) * supply.get("gas_emission_factor", 0.5)
+    gas_vc = supply["gas_variable_cost"] + carbon_adder
     eta = supply["storage_efficiency"] / 100.0
+    annual_cycles = max(supply.get("storage_cycles", 365), 1)
+    eff_energy_cost = supply["storage_energy_cost"] / annual_cycles
 
     nb = len(blocks)
     prob = pulp.LpProblem("ElectricityMarket", pulp.LpMaximize)
@@ -167,6 +173,19 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
                         f"sho_{_s(b)}_{t['name']}_to_{_s(b2)}", 0
                     )
 
+    # Shift-in per destination sub-block (GW received)
+    sub_hours = {(b, i): sh for b, i, _lbl, sh, _av in sub_blocks}
+    shift_in = {}
+    for idx_b, b in enumerate(blocks):
+        for t in demand_tiers[b]:
+            if idx_b < nb - 1:
+                for j in range(idx_b + 1, nb):
+                    b2 = blocks[j]
+                    for _, i2, *_ in [s for s in sub_blocks if s[0] == b2]:
+                        shift_in[b, t["name"], b2, i2] = pulp.LpVariable(
+                            f"shi_{_s(b)}_{t['name']}_to_{_s(b2)}_{i2}", 0
+                        )
+
     # Storage levels
     sto_level = {}
     for b, i, *_ in sub_blocks:
@@ -198,7 +217,7 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
     obj.append(-CAPITAL_CONV * supply["zvc_capital_cost"] * cap_zvc)
     obj.append(-CAPITAL_CONV * supply["gas_capital_cost"] * cap_gas)
     obj.append(-CAPITAL_CONV * supply["storage_power_cost"] * cap_sto_pw)
-    obj.append(-CAPITAL_CONV * supply["storage_energy_cost"] * cap_sto_en)
+    obj.append(-CAPITAL_CONV * eff_energy_cost * cap_sto_en)
 
     prob += pulp.lpSum(obj), "Welfare"
 
@@ -210,20 +229,34 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
         k = sb_key(b, i)
         dem = pulp.lpSum(served[b, i, t["name"]] for t in demand_tiers[b])
 
-        # Shifted-in demand (block-level) appears in every sub-block
-        shifted_in = []
+        shifted_in_vars = []
         for idx_src in range(blocks.index(b)):
             b_src = blocks[idx_src]
             for t in demand_tiers[b_src]:
-                if (b_src, t["name"], b) in shift_out:
-                    shifted_in.append(shift_out[b_src, t["name"], b])
+                if (b_src, t["name"], b, i) in shift_in:
+                    shifted_in_vars.append(shift_in[b_src, t["name"], b, i])
 
-        total_dem = dem + pulp.lpSum(shifted_in) + expand[b, i]
+        total_dem = dem + pulp.lpSum(shifted_in_vars) + expand[b, i]
         total_sup = zvc[k] + gas[k] + sto_dis[k] - sto_chg[k]
 
         cname = f"eb_{_s(b)}_{i}"
         prob.addConstraint(total_sup >= total_dem, name=cname)
         eb_names[b, i] = cname
+
+    # 1b. Energy conservation for shift: total GWh in = total GWh out
+    for idx_b, b in enumerate(blocks):
+        for t in demand_tiers[b]:
+            if idx_b < nb - 1:
+                for j in range(idx_b + 1, nb):
+                    b2 = blocks[j]
+                    if (b, t["name"], b2) in shift_out:
+                        gwh_in = pulp.lpSum(
+                            shift_in[b, t["name"], b2, i2] * sub_hours[b2, i2]
+                            for _, i2, *_ in [s for s in sub_blocks if s[0] == b2]
+                        )
+                        gwh_out = shift_out[b, t["name"], b2] * hours[b]
+                        prob += gwh_in == gwh_out, \
+                            f"shcons_{_s(b)}_{t['name']}_to_{_s(b2)}"
 
     # 2. Tier balance (block-level): served + shifted_out ≤ quantity
     #    Sum across sub-blocks isn't needed; quantity applies per sub-block.
@@ -309,7 +342,7 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
         "zvc": round(capacities["zvc"] * supply["zvc_capital_cost"] * CAPITAL_CONV, 2),
         "gas": round(capacities["gas"] * supply["gas_capital_cost"] * CAPITAL_CONV, 2),
         "storage_power": round(capacities["storage_power"] * supply["storage_power_cost"] * CAPITAL_CONV, 2),
-        "storage_energy": round(capacities["storage_energy"] * supply["storage_energy_cost"] * CAPITAL_CONV, 2),
+        "storage_energy": round(capacities["storage_energy"] * eff_energy_cost * CAPITAL_CONV, 2),
     }
     annual_capital["total"] = round(sum(annual_capital.values()), 2)
 
@@ -353,13 +386,16 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
         for idx_src in range(blocks.index(b)):
             b_src = blocks[idx_src]
             for t in demand_tiers[b_src]:
-                if (b_src, t["name"], b) in shift_out:
-                    val = _v(shift_out[b_src, t["name"], b])
-                    if val > 1e-6:
+                if (b_src, t["name"], b, i) in shift_in:
+                    val_dest = _v(shift_in[b_src, t["name"], b, i])
+                    val_src = _v(shift_out[b_src, t["name"], b])
+                    if val_dest > 1e-6:
                         shifted_in_list.append({
-                            "from_block": b_src, "tier": t["name"], "quantity": val
+                            "from_block": b_src, "tier": t["name"],
+                            "quantity": round(val_dest, 4),
+                            "quantity_src_gw": round(val_src, 4),
                         })
-                        shifted_in_total += val
+                        shifted_in_total += val_dest
         d["shifted_in"] = shifted_in_list
         d["shifted_in_total"] = round(shifted_in_total, 4)
 
@@ -443,9 +479,10 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
                     x for x in demand_tiers[si["from_block"]]
                     if x["name"] == si["tier"]
                 )
+                qty_src = si.get("quantity_src_gw", si["quantity"])
                 total_cv += hours[si["from_block"]] * (
                     src_tier["voll"] - src_tier["shift_cost"]
-                ) * si["quantity"]
+                ) * qty_src
 
     # ── Assemble results ─────────────────────────────────────────────────
     # Convert sb_details to JSON-friendly format
