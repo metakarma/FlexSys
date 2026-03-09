@@ -56,16 +56,16 @@ def default_inputs() -> dict[str, Any]:
 
     zvc_profile = {
         "Winter Peak": [
-            {"label": "Low ZVC",  "pct_hours": 10, "availability": 15},
-            {"label": "High ZVC", "pct_hours": 90, "availability": 80},
+            {"label": "Low Renewables",  "pct_hours": 10, "availability": 15},
+            {"label": "High Renewables", "pct_hours": 90, "availability": 80},
         ],
         "Shoulder": [
-            {"label": "Low ZVC",  "pct_hours": 20, "availability": 20},
-            {"label": "High ZVC", "pct_hours": 80, "availability": 70},
+            {"label": "Low Renewables",  "pct_hours": 20, "availability": 20},
+            {"label": "High Renewables", "pct_hours": 80, "availability": 70},
         ],
         "Low Demand": [
-            {"label": "Low ZVC",  "pct_hours": 15, "availability": 10},
-            {"label": "High ZVC", "pct_hours": 85, "availability": 90},
+            {"label": "Low Renewables",  "pct_hours": 15, "availability": 10},
+            {"label": "High Renewables", "pct_hours": 85, "availability": 90},
         ],
     }
 

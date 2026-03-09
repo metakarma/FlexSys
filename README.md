@@ -29,14 +29,14 @@ Open [http://localhost:8080](http://localhost:8080).
 
 ### ZVC Intermittency (Sub-Blocks)
 
-Each LDC block is split into two sub-blocks — **Low ZVC** and **High ZVC** — to capture the intermittent nature of renewable generation. Parameters per block:
+Each LDC block is split into two sub-blocks — **Low Renewables** and **High Renewables** — to capture the intermittent nature of renewable generation. Parameters per block:
 
 | Parameter | Description |
 |-----------|-------------|
 | **% Hours** | Fraction of block hours in each sub-block (must sum to 100) |
-| **% ZVC Availability** | Fraction of installed ZVC capacity available in each sub-block |
+| **% Renewables Availability** | Fraction of installed ZVC capacity available in each sub-block |
 
-This creates intra-block price differentials: prices are higher in Low-ZVC sub-blocks (scarcity) and lower in High-ZVC sub-blocks (abundance). Storage can arbitrage these differences by charging when ZVC is plentiful and discharging when it is scarce.
+This creates intra-block price differentials: prices are higher in Low Renewables sub-blocks (scarcity) and lower in High Renewables sub-blocks (abundance). Storage can arbitrage these differences by charging when renewables are plentiful and discharging when they are scarce.
 
 ### Supply Technologies (endogenous capacity)
 
@@ -81,11 +81,23 @@ Shadow prices on the energy-balance constraints give **market-clearing prices** 
 With defaults (ZVC £450/kW/yr, Gas £40/kW/yr + £80/MWh, Storage £10/kW + £0.04/kWh, 95% eff):
 
 - **ZVC**: 18.3 GW built
-- **Gas**: 13.2 GW built (peaking in Low-ZVC sub-blocks)
-- **Storage**: 14.1 GW power / 6,499 GWh energy (charges in cheap High-ZVC periods, discharges in expensive Low-ZVC periods)
-- **Clearing prices**: £441/MWh (WP Low), £107/MWh (WP High), £107/MWh (Shoulder Low), £82/MWh (Shoulder High), £80/MWh (Low Demand Low), £64/MWh (Low Demand High)
+- **Gas**: 13.2 GW built (peaking in Low Renewables sub-blocks)
+- **Storage**: 14.1 GW power / 6,499 GWh energy (charges in cheap High Renewables periods, discharges in expensive Low Renewables periods)
+- **Clearing prices**: £441/MWh (WP Low Renewables), £107/MWh (WP High Renewables), £107/MWh (Shoulder Low Renewables), £82/MWh (Shoulder High Renewables), £80/MWh (Low Demand Low Renewables), £64/MWh (Low Demand High Renewables)
 
-All three technologies coexist. Storage performs seasonal and within-block arbitrage — charging in Low Demand High ZVC (£64/MWh) and discharging in Winter Peak Low ZVC (£441/MWh).
+All three technologies coexist. Storage performs seasonal and within-block arbitrage — charging in Low Demand High Renewables (£64/MWh) and discharging in Winter Peak Low Renewables (£441/MWh).
+
+## AI Chat Assistant
+
+An expandable chat panel (toggle via the **AI Chat** button, top-right) lets users interrogate model results conversationally using Anthropic's Claude. Features:
+
+- **Model selector** — defaults to Claude Opus 4.6.
+- **API key input** — your Anthropic key is stored locally in the browser and never sent to the server beyond proxying requests.
+- **Full model context** — every message is sent alongside the complete model source code (`model.py`), the current input parameters, and the latest optimisation results, so the AI can reason about your specific scenario.
+- **Markdown & LaTeX rendering** — responses are formatted with Markdown (via `marked.js`) and mathematical equations are rendered with KaTeX.
+- **Clear Chat** button to reset the conversation history.
+
+This gives users a natural-language interface to ask questions such as *"Why is Winter Peak price so much higher than Shoulder?"* or *"What happens if I double ZVC capital cost?"* — similar to working with an analyst who has the model open in front of them.
 
 ## Project Structure
 

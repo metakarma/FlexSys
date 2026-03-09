@@ -241,9 +241,8 @@ def _plot_input_ldc(inputs: dict) -> str:
                         color="white", alpha=0.9)
             y_bot += gw
 
-        short_lbl = sb["label"].replace("ZVC", "").strip()
         ax.text(cum + h / 2, y_bot + 0.8,
-                f"{sb['block']} ({short_lbl})",
+                f"{sb['block']}\n({sb['label']})",
                 ha="center", va="bottom", fontsize=8, fontweight="bold",
                 color=block_color)
         cum += h
@@ -310,10 +309,9 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> str:
             )
 
         mid_x = cum_hours + h / 2
-        short_lbl = sb["label"].replace("ZVC", "").strip()
         block_color = BLOCK_COLORS.get(b, "#6366F1")
         ax.text(mid_x, gen / 2,
-                f"{b}\n({short_lbl})\n{gen:.1f} GW\n{cur}{sb['price']:,.0f}/MWh",
+                f"{b}\n({sb['label']})\n{gen:.1f} GW\n{cur}{sb['price']:,.0f}/MWh",
                 ha="center", va="center", fontsize=8, fontweight="bold",
                 color="white",
                 bbox=dict(boxstyle="round,pad=0.3", fc=block_color, alpha=0.75))
@@ -439,7 +437,7 @@ def _plot_dispatch(inputs: dict, results: dict, cur: str = "$") -> str:
 
             ax.set_ylim(0, y_max)
             ax.set_title(
-                f"{b}\n{sb['label']} ({sb['hours']:.0f}h, {sb['zvc_availability']:.0f}% ZVC)"
+                f"{b}\n{sb['label']} ({sb['hours']:.0f}h, {sb['zvc_availability']:.0f}% avail)"
                 f"\n{cur}{sb['price']:,.0f}/MWh",
                 fontsize=10, fontweight="bold")
             ax.set_xticks([0, 1])
@@ -538,7 +536,7 @@ def _plot_dispatch_gwh(inputs: dict, results: dict, cur: str = "$") -> str:
             local_max = max(sum(demand_vals), sum(supply_vals)) * 1.1
             ax.set_ylim(0, max(local_max, 1))
             ax.set_title(
-                f"{b}\n{sb['label']} ({sb['hours']:.0f}h, {sb['zvc_availability']:.0f}% ZVC)"
+                f"{b}\n{sb['label']} ({sb['hours']:.0f}h, {sb['zvc_availability']:.0f}% avail)"
                 f"\n{cur}{sb['price']:,.0f}/MWh",
                 fontsize=10, fontweight="bold")
             ax.set_xticks([0, 1])

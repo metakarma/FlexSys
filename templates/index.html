@@ -239,6 +239,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
   <div class="container">
     <h1>Peaky Flexers</h1>
     <p>Electricity Market Price Formation &mdash; Welfare-Maximising Capacity Investment &amp; Dispatch with Zero Variable Cost Intermittency</p>
+    <p style="margin-top:6px;font-size:13px;"><a href="https://github.com/metakarma/FlexSys#readme" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:underline;">Documentation &amp; README on GitHub</a></p>
   </div>
 </header>
 
@@ -263,7 +264,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
   <!-- ZVC Profile -->
   <div class="card">
     <h2><span class="dot" style="background:var(--success)"></span> ZVC Availability Profile (Sub-Blocks)</h2>
-    <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">Each block is split into Low-ZVC and High-ZVC sub-blocks to capture intermittency. % Hours must sum to 100 per block.</p>
+    <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">Each block is split into Low Renewables and High Renewables sub-blocks to capture intermittency. % Hours must sum to 100 per block.</p>
     <div class="grid-3" id="zvc-profile-inputs"></div>
   </div>
 
@@ -466,7 +467,7 @@ function buildZVCProfile() {
             <input type="number" data-zvc="${b}" data-sub="${i}" data-field="pct_hours" value="${sp.pct_hours}" step="any" min="0" max="100"/>
           </div>
           <div class="field-group">
-            <label>% ZVC Avail</label>
+            <label>% Renewables Avail</label>
             <input type="number" data-zvc="${b}" data-sub="${i}" data-field="availability" value="${sp.availability}" step="any" min="0" max="100"/>
           </div>
         </div>`;
@@ -707,7 +708,7 @@ function renderResults(data, inputs) {
   let t = "";
   subs.forEach(sb => {
     const tag = sb.sub_idx === 0 ? "lo" : "hi";
-    t += `<h3 style="margin:20px 0 10px;font-size:15px;font-weight:600;">${sb.block} <span class="sb-tag ${tag}">${sb.label}</span> &mdash; ${sb.hours.toFixed(0)}h, ${sb.zvc_availability}% ZVC &mdash; Price: ${fmtCur(sb.price)}/MWh</h3>`;
+    t += `<h3 style="margin:20px 0 10px;font-size:15px;font-weight:600;">${sb.block} <span class="sb-tag ${tag}">${sb.label}</span> &mdash; ${sb.hours.toFixed(0)}h, ${sb.zvc_availability}% Renewables &mdash; Price: ${fmtCur(sb.price)}/MWh</h3>`;
 
     t += `<table><thead><tr><th>Demand Tier</th><th>Available (GW)</th><th>Served (GW)</th><th>Lost (GW)</th><th>Shifted Out</th><th>VoLL (${getCur()}/MWh)</th></tr></thead><tbody>`;
     sb.demand_tiers.forEach(tier => {
