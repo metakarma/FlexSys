@@ -1,0 +1,8 @@
+services:
+  flexsys:
+    build: .
+    ports:
+      - "8180:8080"
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped

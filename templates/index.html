@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>FlexSys — Electricity Market Optimiser</title>
+<style>
+:root {
+  --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+  --text: #1e293b; --muted: #64748b; --accent: #3b82f6;
+  --accent-dark: #2563eb; --success: #10b981; --warn: #f59e0b;
+  --danger: #ef4444; --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+header {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: white; padding: 32px 0; margin-bottom: 32px;
+}
+header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+header p { color: #94a3b8; margin-top: 6px; font-size: 15px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px; margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.card h2 {
+  font-size: 17px; font-weight: 600; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card h2 .dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+}
+
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+.tab-btn {
+  padding: 8px 16px; border: 1px solid var(--border); background: var(--bg);
+  border-radius: 6px 6px 0 0; cursor: pointer; font-size: 13px;
+  font-weight: 500; color: var(--muted); transition: all .15s;
+}
+.tab-btn.active { background: var(--surface); color: var(--accent); border-bottom-color: var(--surface); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 768px) { .grid-3, .grid-2, .grid-4 { grid-template-columns: 1fr; } }
+
+label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+input[type="number"] {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 14px; color: var(--text);
+  transition: border-color .15s;
+}
+input[type="number"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+
+.field-group { margin-bottom: 12px; }
+.tier-section { padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 10px; }
+.tier-section h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+
+.sub-block-row { display: flex; gap: 10px; align-items: end; margin-bottom: 8px; }
+.sub-block-row .sub-label { font-size: 12px; font-weight: 600; min-width: 60px; color: var(--muted); padding-bottom: 10px; }
+.sub-block-row .field-group { flex: 1; margin-bottom: 0; }
+
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent); color: white; border: none;
+  padding: 14px 32px; border-radius: 8px; font-size: 15px;
+  font-weight: 600; cursor: pointer; transition: background .15s;
+  margin-top: 12px;
+}
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary .spinner {
+  width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3);
+  border-top-color: white; border-radius: 50%; display: none;
+  animation: spin .6s linear infinite;
+}
+.btn-primary.loading .spinner { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#results { display: none; }
+.results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.metric-card {
+  background: var(--bg); border-radius: 8px; padding: 14px; text-align: center;
+}
+.metric-card .value { font-size: 20px; font-weight: 700; color: var(--accent); }
+.metric-card .label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+th { text-align: left; padding: 8px 10px; background: var(--bg); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+
+.plot-container { margin: 20px 0; text-align: center; }
+.plot-container img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+
+.error-box {
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+  padding: 16px; border-radius: 8px; margin-top: 16px; display: none;
+}
+
+.sb-tag {
+  display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px;
+  border-radius: 4px; margin-left: 6px;
+}
+.sb-tag.lo { background: #fef3c7; color: #92400e; }
+.sb-tag.hi { background: #d1fae5; color: #065f46; }
+
+.currency-bar {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px; padding: 12px 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.currency-bar label { margin-bottom: 0; text-transform: none; font-size: 13px; font-weight: 600; color: var(--text); }
+.currency-bar select {
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 14px; color: var(--text); background: var(--bg); cursor: pointer;
+}
+.currency-bar select:focus { outline: none; border-color: var(--accent); }
+
+footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>FlexSys</h1>
+    <p>Electricity Market Price Formation &mdash; Welfare-Maximising Capacity Investment &amp; Dispatch with ZVC Intermittency</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Currency selector -->
+  <div class="currency-bar">
+    <label for="currency-select">Currency:</label>
+    <select id="currency-select" onchange="updateCurrency()">
+      <option value="$">$ &mdash; USD</option>
+      <option value="£" selected>£ &mdash; GBP</option>
+      <option value="€">€ &mdash; EUR</option>
+    </select>
+  </div>
+
+  <!-- LDC Blocks -->
+  <div class="card">
+    <h2><span class="dot" style="background:var(--accent)"></span> Load Duration Curve Blocks</h2>
+    <div class="grid-3" id="ldc-inputs"></div>
+  </div>
+
+  <!-- ZVC Profile -->
+  <div class="card">
+    <h2><span class="dot" style="background:var(--success)"></span> ZVC Availability Profile (Sub-Blocks)</h2>
+    <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">Each block is split into Low-ZVC and High-ZVC sub-blocks to capture intermittency. % Hours must sum to 100 per block.</p>
+    <div class="grid-3" id="zvc-profile-inputs"></div>
+  </div>
+
+  <!-- Demand Tiers -->
+  <div class="card">
+    <h2><span class="dot" style="background:#8b5cf6"></span> Demand Tiers &amp; Expandable Demand</h2>
+    <div class="tabs" id="demand-tabs"></div>
+    <div id="demand-panels"></div>
+  </div>
+
+  <!-- Supply -->
+  <div class="card">
+    <h2><span class="dot" style="background:var(--success)"></span> Supply-Side Technology Costs</h2>
+    <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">The model determines optimal capacities. No fixed capacities are pre-set.</p>
+    <div class="grid-3">
+      <div>
+        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Zero-Variable-Cost (ZVC)</h4>
+        <div class="field-group">
+          <label>Capital Cost (<span class="cur">£</span>/kW/year)</label>
+          <input type="number" id="zvc_capital_cost" step="any"/>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Gas Peaker</h4>
+        <div class="field-group">
+          <label>Capital Cost (<span class="cur">£</span>/kW/year)</label>
+          <input type="number" id="gas_capital_cost" step="any"/>
+        </div>
+        <div class="field-group">
+          <label>Variable Cost (<span class="cur">£</span>/MWh)</label>
+          <input type="number" id="gas_variable_cost" step="any"/>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Storage</h4>
+        <div class="field-group">
+          <label>Power Cost (<span class="cur">£</span>/kW/year)</label>
+          <input type="number" id="storage_power_cost" step="any"/>
+        </div>
+        <div class="field-group">
+          <label>Energy Cost (<span class="cur">£</span>/kWh/year)</label>
+          <input type="number" id="storage_energy_cost" step="any"/>
+        </div>
+        <div class="field-group">
+          <label>Round-Trip Efficiency (%)</label>
+          <input type="number" id="storage_efficiency" step="any" min="1" max="100"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action -->
+  <div style="text-align:center;margin:28px 0;">
+    <button class="btn-primary" id="btn-solve" onclick="runOptimise()">
+      <span class="spinner"></span>
+      Optimise the System
+    </button>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="card">
+      <h2><span class="dot" style="background:var(--success)"></span> Market Equilibrium Summary</h2>
+      <div class="results-grid" id="summary-metrics"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--accent)"></span> Optimal Capacity Mix</h2>
+      <div class="plot-container" id="plot-capacity"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--accent)"></span> Load Duration Curve</h2>
+      <div class="plot-container" id="plot-ldc"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:#8b5cf6"></span> Demand &amp; Supply by Sub-Block</h2>
+      <div class="plot-container" id="plot-dispatch"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--warn)"></span> Storage Activity</h2>
+      <div id="storage-economics"></div>
+      <div class="plot-container" id="plot-storage"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--danger)"></span> Detailed Sub-Block Results</h2>
+      <div id="detail-tables"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>FlexSys &mdash; Electricity Market LP Model</footer>
+
+<script>
+const DEFAULTS = {{ defaults | safe }};
+
+function getCur() { return document.getElementById("currency-select").value; }
+
+function updateCurrency() {
+  const c = getCur();
+  document.querySelectorAll(".cur").forEach(el => el.textContent = c);
+}
+
+function init() {
+  buildLDC();
+  buildZVCProfile();
+  buildDemandTabs();
+  buildSupply();
+  updateCurrency();
+}
+
+function buildLDC() {
+  const c = document.getElementById("ldc-inputs");
+  DEFAULTS.blocks.forEach(b => {
+    c.innerHTML += `
+      <div>
+        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">${b}</h4>
+        <div class="field-group">
+          <label>Hours</label>
+          <input type="number" data-ldc="${b}" data-field="hours" value="${DEFAULTS.hours[b]}" step="any"/>
+        </div>
+        <div class="field-group">
+          <label>Base Load (GW)</label>
+          <input type="number" data-ldc="${b}" data-field="base_load" value="${DEFAULTS.base_load[b]}" step="any"/>
+        </div>
+      </div>`;
+  });
+}
+
+function buildZVCProfile() {
+  const c = document.getElementById("zvc-profile-inputs");
+  DEFAULTS.blocks.forEach(b => {
+    const profile = DEFAULTS.zvc_profile[b];
+    let html = `<div>
+      <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">${b}</h4>`;
+    profile.forEach((sp, i) => {
+      html += `
+        <div class="sub-block-row">
+          <span class="sub-label">${sp.label}</span>
+          <div class="field-group">
+            <label>% Hours</label>
+            <input type="number" data-zvc="${b}" data-sub="${i}" data-field="pct_hours" value="${sp.pct_hours}" step="any" min="0" max="100"/>
+          </div>
+          <div class="field-group">
+            <label>% ZVC Avail</label>
+            <input type="number" data-zvc="${b}" data-sub="${i}" data-field="availability" value="${sp.availability}" step="any" min="0" max="100"/>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+    c.innerHTML += html;
+  });
+}
+
+function buildDemandTabs() {
+  const tabs = document.getElementById("demand-tabs");
+  const panels = document.getElementById("demand-panels");
+  DEFAULTS.blocks.forEach((b, i) => {
+    tabs.innerHTML += `<button class="tab-btn ${i===0?'active':''}" onclick="switchTab(this,'${b}')">${b}</button>`;
+
+    let html = `<div class="tab-panel ${i===0?'active':''}" id="panel-${b}">`;
+    DEFAULTS.demand_tiers[b].forEach(t => {
+      html += `
+        <div class="tier-section">
+          <h4>${t.name}-Value Demand</h4>
+          <div class="grid-3">
+            <div class="field-group">
+              <label>Quantity (GW)</label>
+              <input type="number" data-block="${b}" data-tier="${t.name}" data-field="quantity" value="${t.quantity}" step="any"/>
+            </div>
+            <div class="field-group">
+              <label>VoLL (<span class="cur">£</span>/MWh)</label>
+              <input type="number" data-block="${b}" data-tier="${t.name}" data-field="voll" value="${t.voll}" step="any"/>
+            </div>
+            <div class="field-group">
+              <label>Shift Cost (<span class="cur">£</span>/MWh)</label>
+              <input type="number" data-block="${b}" data-tier="${t.name}" data-field="shift_cost" value="${t.shift_cost}" step="any"/>
+            </div>
+          </div>
+        </div>`;
+    });
+    html += `
+      <div class="tier-section">
+        <h4>Expandable Demand</h4>
+        <div class="grid-2">
+          <div class="field-group">
+            <label>Quantity (GW)</label>
+            <input type="number" data-block="${b}" data-expand="quantity" value="${DEFAULTS.expandable[b].quantity}" step="any"/>
+          </div>
+          <div class="field-group">
+            <label>Activation Value (<span class="cur">£</span>/MWh)</label>
+            <input type="number" data-block="${b}" data-expand="value" value="${DEFAULTS.expandable[b].value}" step="any"/>
+          </div>
+        </div>
+      </div>`;
+    html += `</div>`;
+    panels.innerHTML += html;
+  });
+}
+
+function buildSupply() {
+  const s = DEFAULTS.supply;
+  document.getElementById("zvc_capital_cost").value = s.zvc_capital_cost;
+  document.getElementById("gas_capital_cost").value = s.gas_capital_cost;
+  document.getElementById("gas_variable_cost").value = s.gas_variable_cost;
+  document.getElementById("storage_power_cost").value = s.storage_power_cost;
+  document.getElementById("storage_energy_cost").value = s.storage_energy_cost;
+  document.getElementById("storage_efficiency").value = s.storage_efficiency;
+}
+
+function switchTab(btn, block) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("panel-" + block).classList.add("active");
+}
+
+function gatherInputs() {
+  const blocks = DEFAULTS.blocks;
+  const hours = {}, base_load = {}, demand_tiers = {}, expandable = {}, zvc_profile = {};
+
+  blocks.forEach(b => {
+    hours[b] = +document.querySelector(`[data-ldc="${b}"][data-field="hours"]`).value;
+    base_load[b] = +document.querySelector(`[data-ldc="${b}"][data-field="base_load"]`).value;
+
+    zvc_profile[b] = [];
+    DEFAULTS.zvc_profile[b].forEach((sp, i) => {
+      zvc_profile[b].push({
+        label: sp.label,
+        pct_hours: +document.querySelector(`[data-zvc="${b}"][data-sub="${i}"][data-field="pct_hours"]`).value,
+        availability: +document.querySelector(`[data-zvc="${b}"][data-sub="${i}"][data-field="availability"]`).value,
+      });
+    });
+
+    demand_tiers[b] = [];
+    DEFAULTS.demand_tiers[b].forEach(t => {
+      demand_tiers[b].push({
+        name: t.name,
+        quantity: +document.querySelector(`[data-block="${b}"][data-tier="${t.name}"][data-field="quantity"]`).value,
+        voll: +document.querySelector(`[data-block="${b}"][data-tier="${t.name}"][data-field="voll"]`).value,
+        shift_cost: +document.querySelector(`[data-block="${b}"][data-tier="${t.name}"][data-field="shift_cost"]`).value,
+      });
+    });
+
+    expandable[b] = {
+      quantity: +document.querySelector(`[data-block="${b}"][data-expand="quantity"]`).value,
+      value: +document.querySelector(`[data-block="${b}"][data-expand="value"]`).value,
+    };
+  });
+
+  return {
+    blocks, hours, base_load, demand_tiers, expandable, zvc_profile,
+    currency: getCur(),
+    supply: {
+      zvc_capital_cost: +document.getElementById("zvc_capital_cost").value,
+      gas_capital_cost: +document.getElementById("gas_capital_cost").value,
+      gas_variable_cost: +document.getElementById("gas_variable_cost").value,
+      storage_power_cost: +document.getElementById("storage_power_cost").value,
+      storage_energy_cost: +document.getElementById("storage_energy_cost").value,
+      storage_efficiency: +document.getElementById("storage_efficiency").value,
+    }
+  };
+}
+
+async function runOptimise() {
+  const btn = document.getElementById("btn-solve");
+  const errBox = document.getElementById("error-box");
+  errBox.style.display = "none";
+  btn.classList.add("loading");
+  btn.disabled = true;
+  document.getElementById("results").style.display = "none";
+
+  try {
+    const inputs = gatherInputs();
+    const resp = await fetch("/optimise", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(inputs),
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      errBox.textContent = "Optimisation failed: " + (data.status || "Unknown error");
+      errBox.style.display = "block";
+      return;
+    }
+
+    renderResults(data, inputs);
+  } catch (e) {
+    errBox.textContent = "Request failed: " + e.message;
+    errBox.style.display = "block";
+  } finally {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+}
+
+function fmtCur(n) { return getCur() + Number(n).toLocaleString(undefined, {maximumFractionDigits:0}); }
+function fmtGW(n) { return n.toFixed(1) + " GW"; }
+
+function renderResults(data, inputs) {
+  const blocks = data.blocks;
+  const caps = data.capacities;
+  const subs = data.sub_blocks;
+
+  // Summary metrics: sub-block prices grouped by block
+  let m = "";
+  blocks.forEach(b => {
+    const bSubs = subs.filter(s => s.block === b);
+    bSubs.forEach(sb => {
+      const tag = sb.sub_idx === 0 ? "lo" : "hi";
+      m += `<div class="metric-card"><div class="value" style="font-size:17px">${fmtCur(sb.price)}/MWh</div><div class="label">${b} <span class="sb-tag ${tag}">${sb.label}</span></div></div>`;
+    });
+  });
+  m += `<div class="metric-card"><div class="value">${fmtGW(caps.zvc)}</div><div class="label">ZVC Capacity</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtGW(caps.gas)}</div><div class="label">Gas Capacity</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtGW(caps.storage_power)}</div><div class="label">Storage Power</div></div>`;
+  m += `<div class="metric-card"><div class="value">${caps.storage_energy.toFixed(0)} GWh</div><div class="label">Storage Energy</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtCur(data.net_welfare)}</div><div class="label">Net Welfare</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtCur(data.total_consumer_value)}</div><div class="label">Consumer Value</div></div>`;
+  m += `<div class="metric-card"><div class="value" style="color:var(--danger)">${fmtCur(data.total_variable_cost)}</div><div class="label">Variable Cost</div></div>`;
+  m += `<div class="metric-card"><div class="value" style="color:var(--danger)">${fmtCur(data.total_capital_cost)}</div><div class="label">Capital Cost</div></div>`;
+  document.getElementById("summary-metrics").innerHTML = m;
+
+  // Plots
+  document.getElementById("plot-capacity").innerHTML = `<img src="${data.plots.capacity}" alt="Capacity"/>`;
+  document.getElementById("plot-ldc").innerHTML = `<img src="${data.plots.ldc}" alt="LDC"/>`;
+  document.getElementById("plot-dispatch").innerHTML = `<img src="${data.plots.dispatch}" alt="Dispatch"/>`;
+  document.getElementById("plot-storage").innerHTML = `<img src="${data.plots.storage}" alt="Storage"/>`;
+
+  // Storage economics
+  const se = data.storage_economics;
+  let seHtml = "";
+  if (se.total_discharged_gwh > 0.1) {
+    seHtml = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;">
+      <div class="metric-card"><div class="value" style="font-size:16px">${se.total_charged_gwh.toFixed(0)} GWh</div><div class="label">Charged</div></div>
+      <div class="metric-card"><div class="value" style="font-size:16px">${se.total_discharged_gwh.toFixed(0)} GWh</div><div class="label">Discharged</div></div>
+      <div class="metric-card"><div class="value" style="font-size:16px">${se.efficiency_loss_gwh.toFixed(0)} GWh</div><div class="label">Efficiency Loss</div></div>
+      <div class="metric-card"><div class="value" style="font-size:16px">${fmtCur(se.avg_charge_price)}/MWh</div><div class="label">Avg Charge Price</div></div>
+      <div class="metric-card"><div class="value" style="font-size:16px">${fmtCur(se.avg_discharge_price)}/MWh</div><div class="label">Avg Discharge Price</div></div>
+      <div class="metric-card"><div class="value" style="font-size:16px">${fmtCur(Math.abs(se.implied_cycling_cost))}/MWh</div><div class="label">Implied Cycling Cost</div></div>
+    </div>`;
+  } else {
+    seHtml = `<p style="font-size:13px;color:var(--muted);margin-bottom:12px;">No storage capacity built. Adjust storage costs or ZVC profile to explore storage investment.</p>`;
+  }
+  document.getElementById("storage-economics").innerHTML = seHtml;
+
+  // Detail tables — per sub-block
+  let t = "";
+  subs.forEach(sb => {
+    const tag = sb.sub_idx === 0 ? "lo" : "hi";
+    t += `<h3 style="margin:20px 0 10px;font-size:15px;font-weight:600;">${sb.block} <span class="sb-tag ${tag}">${sb.label}</span> &mdash; ${sb.hours.toFixed(0)}h, ${sb.zvc_availability}% ZVC &mdash; Price: ${fmtCur(sb.price)}/MWh</h3>`;
+
+    t += `<table><thead><tr><th>Demand Tier</th><th>Available (GW)</th><th>Served (GW)</th><th>Lost (GW)</th><th>Shifted Out</th><th>VoLL (${getCur()}/MWh)</th></tr></thead><tbody>`;
+    sb.demand_tiers.forEach(tier => {
+      let shiftStr = "\u2014";
+      if (tier.shifted_out && Object.keys(tier.shifted_out).length > 0) {
+        shiftStr = Object.entries(tier.shifted_out).map(([dest, q]) => `${q.toFixed(2)} \u2192 ${dest}`).join(", ");
+      }
+      t += `<tr><td>${tier.name}</td><td>${tier.quantity}</td><td>${tier.served.toFixed(2)}</td><td>${Math.max(0,tier.lost).toFixed(2)}</td><td>${shiftStr}</td><td>${fmtCur(tier.voll)}</td></tr>`;
+    });
+    t += `</tbody></table>`;
+
+    if (sb.shifted_in && sb.shifted_in.length > 0) {
+      t += `<p style="font-size:13px;color:var(--muted);margin-bottom:6px;">Shifted in: `;
+      t += sb.shifted_in.map(s => `${s.quantity.toFixed(2)} GW (${s.tier} from ${s.from_block})`).join(", ");
+      t += `</p>`;
+    }
+
+    t += `<table><thead><tr><th>Supply</th><th>Dispatch (GW)</th><th>Available (GW)</th></tr></thead><tbody>`;
+    const zvcAvail = (caps.zvc * sb.zvc_availability / 100).toFixed(2);
+    t += `<tr><td>ZVC</td><td>${sb.supply.zvc.toFixed(2)}</td><td>${zvcAvail}</td></tr>`;
+    t += `<tr><td>Gas Peaker</td><td>${sb.supply.gas.toFixed(2)}</td><td>${caps.gas.toFixed(2)}</td></tr>`;
+    t += `<tr><td>Storage Discharge</td><td>${sb.supply.storage_discharge.toFixed(2)}</td><td>${caps.storage_power.toFixed(2)}</td></tr>`;
+    t += `<tr><td>Storage Charge</td><td>${sb.supply.storage_charge.toFixed(2)}</td><td></td></tr>`;
+    t += `</tbody></table>`;
+
+    t += `<p style="font-size:13px;color:var(--muted);">Expandable: ${sb.expandable.activated.toFixed(2)} / ${sb.expandable.available} GW (value ${fmtCur(sb.expandable.value)}/MWh) &nbsp;|&nbsp; Storage level: ${sb.storage.level.toFixed(1)} GWh &nbsp;|&nbsp; Total served: ${sb.total_served_gw.toFixed(2)} GW</p>`;
+    t += `<hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">`;
+  });
+  document.getElementById("detail-tables").innerHTML = t;
+
+  document.getElementById("results").style.display = "block";
+  document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+}
+
+init();
+</script>
+</body>
+</html>
