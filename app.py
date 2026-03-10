@@ -207,6 +207,7 @@ def generate_plots(inputs: dict, results: dict, cur: str = "$") -> dict:
     plots = {}
     plots["input_ldc"] = _plot_input_ldc(inputs)
     plots["ldc"] = _plot_ldc(inputs, results, cur)
+    plots["price_duration"] = _plot_price_duration(inputs, results, cur)
     plots["capacity"] = _plot_capacity(results, cur)
     plots["dispatch"] = _plot_dispatch(inputs, results, cur)
     plots["dispatch_gwh"] = _plot_dispatch_gwh(inputs, results, cur)
@@ -363,6 +364,77 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> str:
 
     sns.despine(left=True, bottom=True)
 
+    return _fig_to_base64(fig)
+
+
+def _plot_price_duration(inputs: dict, results: dict, cur: str = "$") -> str:
+    """Price Duration Curve — sub-blocks sorted by clearing price, high to low."""
+    from matplotlib.patches import Patch
+
+    subs = results["sub_blocks"]
+    sorted_subs = sorted(subs, key=lambda s: s["price"], reverse=True)
+
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+
+    cum_hours = 0
+    for sb in sorted_subs:
+        h = sb["hours"]
+        price = sb["price"]
+        b = sb["block"]
+        block_color = BLOCK_COLORS.get(b, "#6366F1")
+
+        ax.barh(y=0, width=h, left=cum_hours, height=price,
+                color=block_color, edgecolor="white", linewidth=0.4,
+                align="edge", alpha=0.85)
+
+        served_gw = sum(t["served"] for t in sb["demand_tiers"])
+        shifted_out_gw = sum(
+            sum(v for v in t["shifted_out"].values())
+            for t in sb["demand_tiers"]
+        )
+        shifted_in_gw = sb["shifted_in_total"]
+        curtailed_gw = sum(t["lost"] for t in sb["demand_tiers"])
+        sto_dis = sb["supply"]["storage_discharge"]
+        sto_chg = sb["supply"]["storage_charge"]
+
+        lines = [f"{b}", f"({sb['label']})", f"{cur}{price:,.0f}/MWh", ""]
+        lines.append(f"Served: {served_gw:.1f} GW")
+        if shifted_in_gw > 0.01:
+            lines.append(f"Shift in: +{shifted_in_gw:.1f} GW")
+        if shifted_out_gw > 0.01:
+            lines.append(f"Shift out: \u2212{shifted_out_gw:.1f} GW")
+        if curtailed_gw > 0.01:
+            lines.append(f"Curtailed: {curtailed_gw:.1f} GW")
+        if sto_dis > 0.01 or sto_chg > 0.01:
+            lines.append(f"Sto: +{sto_dis:.1f}/\u2212{sto_chg:.1f} GW")
+
+        mid_x = cum_hours + h / 2
+        mid_y = price / 2
+        ax.text(mid_x, mid_y, "\n".join(lines),
+                ha="center", va="center", fontsize=7.5, fontweight="bold",
+                color="white",
+                bbox=dict(boxstyle="round,pad=0.3", fc=block_color, alpha=0.80))
+
+        cum_hours += h
+
+    ax.set_xlabel("Cumulative Hours", fontsize=11)
+    ax.set_ylabel(f"Clearing Price ({cur}/MWh)", fontsize=11)
+    ax.set_title("Price Duration Curve", fontsize=13, fontweight="bold")
+    ax.set_xlim(0, cum_hours)
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{cur}{x:,.0f}"))
+
+    blocks_in_chart = []
+    seen = set()
+    for sb in sorted_subs:
+        if sb["block"] not in seen:
+            seen.add(sb["block"])
+            blocks_in_chart.append(sb["block"])
+    legend_handles = [Patch(fc=BLOCK_COLORS.get(b, "#6366F1"), ec="white", label=b)
+                      for b in blocks_in_chart]
+    ax.legend(handles=legend_handles, loc="upper right", fontsize=9)
+
+    sns.despine(left=True, bottom=True)
     return _fig_to_base64(fig)
 
 

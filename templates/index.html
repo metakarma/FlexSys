@@ -371,6 +371,12 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
     </div>
 
     <div class="card">
+      <h2><span class="dot" style="background:var(--accent)"></span> Price Duration Curve</h2>
+      <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">Clearing prices sorted high to low, with demand served, shifted, and storage activity per sub-block.</p>
+      <div class="plot-container" id="plot-price-duration"></div>
+    </div>
+
+    <div class="card">
       <h2><span class="dot" style="background:#8b5cf6"></span> Demand &amp; Supply by Sub-Block (GW)</h2>
       <div class="plot-container" id="plot-dispatch"></div>
     </div>
@@ -684,6 +690,7 @@ function renderResults(data, inputs) {
   document.getElementById("plot-capacity").innerHTML = `<img src="${data.plots.capacity}" alt="Capacity"/>`;
   document.getElementById("plot-input-ldc").innerHTML = `<img src="${data.plots.input_ldc}" alt="Input LDC"/>`;
   document.getElementById("plot-ldc").innerHTML = `<img src="${data.plots.ldc}" alt="LDC"/>`;
+  document.getElementById("plot-price-duration").innerHTML = `<img src="${data.plots.price_duration}" alt="Price Duration"/>`;
   document.getElementById("plot-dispatch").innerHTML = `<img src="${data.plots.dispatch}" alt="Dispatch GW"/>`;
   document.getElementById("plot-dispatch-gwh").innerHTML = `<img src="${data.plots.dispatch_gwh}" alt="Dispatch GWh"/>`;
   document.getElementById("plot-storage").innerHTML = `<img src="${data.plots.storage}" alt="Storage"/>`;
