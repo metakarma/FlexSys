@@ -620,7 +620,7 @@ def _plot_energy_flows(inputs: dict, results: dict) -> str | None:
         if dis > 0.1:
             dischargers.append({"label": lbl, "gwh": dis, "color": color})
 
-    # Collect shift flows — now sub-block-resolved at the destination
+    # Collect shift flows — per destination sub-block
     hours = inputs["hours"]
     shift_flows = []
     seen_src = set()
@@ -632,7 +632,6 @@ def _plot_energy_flows(inputs: dict, results: dict) -> str | None:
                 key = (sb["block"], t["name"], dest)
                 if key not in seen_src and qty > 0.01:
                     seen_src.add(key)
-                    total_gwh = qty * hours[sb["block"]]
                     dest_sbs = [s for s in subs if s["block"] == dest]
                     for dsb in dest_sbs:
                         si_gwh = 0.0

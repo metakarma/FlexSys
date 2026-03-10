@@ -1,9 +1,10 @@
 """
 Electricity Market LP Model — with ZVC Intermittency
 =====================================================
-Each LDC block is split into two sub-blocks (Low-ZVC and High-ZVC) to capture
-intermittency of zero-variable-cost renewables.  This enables within-block
-storage arbitrage: charge when ZVC is plentiful, discharge when scarce.
+Each LDC block is split into two sub-blocks (Low Renewables and High Renewables)
+to capture intermittency of zero-variable-cost renewables.  This enables
+within-block storage arbitrage: charge when renewables are plentiful, discharge
+when scarce.
 
 The model simultaneously determines:
   • optimal capacity investment (ZVC, gas peaker, storage)
@@ -11,6 +12,11 @@ The model simultaneously determines:
 
 Shadow prices on sub-block energy-balance constraints give clearing prices.
 Storage round-trip efficiency is physical; the implied cycling cost is output.
+
+Two-pass shifting logic:
+  Pass 1 — sub-block-level shift_in (can target cheaper sub-blocks).
+  If ZVC capacity = 0, pass 2 — block-level shift_in (uniform GW across
+  sub-blocks) to eliminate spurious asymmetry from LP degeneracy.
 
 Units:  Power GW · Energy GWh · Price $/MWh · Capital $/kW/yr or $/kWh/yr
 """
@@ -42,9 +48,9 @@ def default_inputs() -> dict[str, Any]:
             {"name": "Low",  "quantity": 10, "voll": 120,   "shift_cost": 8},
         ],
         "Low Demand": [
-            {"name": "High", "quantity": 5,  "voll": 10000, "shift_cost": 20},
-            {"name": "Mid",  "quantity": 10, "voll": 400,   "shift_cost": 10},
-            {"name": "Low",  "quantity": 5,  "voll": 100,   "shift_cost": 5},
+            {"name": "High", "quantity": 5,  "voll": 10000, "shift_cost": 0},
+            {"name": "Mid",  "quantity": 10, "voll": 400,   "shift_cost": 0},
+            {"name": "Low",  "quantity": 5,  "voll": 100,   "shift_cost": 0},
         ],
     }
 
@@ -100,6 +106,24 @@ CAPITAL_CONV = 1000  # $/kW/yr × GW → model-units/yr
 
 
 def solve(inputs: dict[str, Any]) -> dict[str, Any]:
+    """Two-pass entry point.
+
+    Pass 1: sub-block-level shift_in (full flexibility).
+    If the result has ZVC capacity ≈ 0, re-solve with block-level shift_in
+    to avoid LP-degeneracy artefacts when sub-blocks are identical.
+    """
+    result = _solve_core(inputs, block_level_shift=False)
+    if result.get("error"):
+        return result
+
+    if result["capacities"]["zvc"] < 0.01:
+        result = _solve_core(inputs, block_level_shift=True)
+
+    return result
+
+
+def _solve_core(inputs: dict[str, Any], *,
+                block_level_shift: bool = False) -> dict[str, Any]:
     blocks = inputs["blocks"]
     hours = inputs["hours"]
     demand_tiers = inputs["demand_tiers"]
@@ -120,7 +144,6 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
         return n.replace(" ", "_").replace("-", "_")
 
     # ── Build sub-block list ─────────────────────────────────────────────
-    # Each entry: (block, sub_idx, label, sub_hours, zvc_avail_frac)
     sub_blocks: list[tuple[str, int, str, float, float]] = []
     for b in blocks:
         for i, sp in enumerate(zvc_profile[b]):
@@ -162,29 +185,50 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
         sto_dis[k] = pulp.LpVariable(f"sdis_{_s(b)}_{i}", 0)
         sto_chg[k] = pulp.LpVariable(f"schg_{_s(b)}_{i}", 0)
 
-    # Shift-out (block-level, only downward)
+    # Shift-out (block-level, only downward, not from last block)
     shift_out = {}
     for idx_b, b in enumerate(blocks):
+        if idx_b >= nb - 1:
+            continue
         for t in demand_tiers[b]:
-            if idx_b < nb - 1:
-                for j in range(idx_b + 1, nb):
-                    b2 = blocks[j]
-                    shift_out[b, t["name"], b2] = pulp.LpVariable(
-                        f"sho_{_s(b)}_{t['name']}_to_{_s(b2)}", 0
-                    )
+            for j in range(idx_b + 1, nb):
+                b2 = blocks[j]
+                shift_out[b, t["name"], b2] = pulp.LpVariable(
+                    f"sho_{_s(b)}_{t['name']}_to_{_s(b2)}", 0
+                )
 
-    # Shift-in per destination sub-block (GW received)
+    # Shift-in variables — mode depends on block_level_shift flag
     sub_hours = {(b, i): sh for b, i, _lbl, sh, _av in sub_blocks}
-    shift_in = {}
-    for idx_b, b in enumerate(blocks):
-        for t in demand_tiers[b]:
-            if idx_b < nb - 1:
+    shift_in = {}  # keyed (src_block, tier, dest_block, dest_sub_idx)
+
+    if not block_level_shift:
+        # Sub-block-level: separate variable per destination sub-block
+        for idx_b, b in enumerate(blocks):
+            if idx_b >= nb - 1:
+                continue
+            for t in demand_tiers[b]:
                 for j in range(idx_b + 1, nb):
                     b2 = blocks[j]
                     for _, i2, *_ in [s for s in sub_blocks if s[0] == b2]:
                         shift_in[b, t["name"], b2, i2] = pulp.LpVariable(
                             f"shi_{_s(b)}_{t['name']}_to_{_s(b2)}_{i2}", 0
                         )
+    else:
+        # Block-level: one variable per destination block, shared across
+        # sub-blocks (same GW in every sub-block of the destination).
+        _shift_in_blk = {}
+        for idx_b, b in enumerate(blocks):
+            if idx_b >= nb - 1:
+                continue
+            for t in demand_tiers[b]:
+                for j in range(idx_b + 1, nb):
+                    b2 = blocks[j]
+                    v = pulp.LpVariable(
+                        f"shi_{_s(b)}_{t['name']}_to_{_s(b2)}", 0
+                    )
+                    _shift_in_blk[b, t["name"], b2] = v
+                    for _, i2, *_ in [s for s in sub_blocks if s[0] == b2]:
+                        shift_in[b, t["name"], b2, i2] = v
 
     # Storage levels
     sto_level = {}
@@ -202,7 +246,6 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
         obj.append(sh * expandable[b]["value"] * expand[b, i])
         obj.append(-sh * gas_vc * gas[k])
 
-    # Shifted-demand welfare (credited at source-block total hours, once per shift)
     for idx_b, b in enumerate(blocks):
         for idx_src in range(idx_b):
             b_src = blocks[idx_src]
@@ -213,7 +256,6 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
                         * shift_out[b_src, t["name"], b]
                     )
 
-    # Capital costs
     obj.append(-CAPITAL_CONV * supply["zvc_capital_cost"] * cap_zvc)
     obj.append(-CAPITAL_CONV * supply["gas_capital_cost"] * cap_gas)
     obj.append(-CAPITAL_CONV * supply["storage_power_cost"] * cap_sto_pw)
@@ -243,23 +285,34 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
         prob.addConstraint(total_sup >= total_dem, name=cname)
         eb_names[b, i] = cname
 
-    # 1b. Energy conservation for shift: total GWh in = total GWh out
+    # 1b. Energy conservation for shifts: total GWh in = total GWh out
+    _seen_shift_cons = set()
     for idx_b, b in enumerate(blocks):
+        if idx_b >= nb - 1:
+            continue
         for t in demand_tiers[b]:
-            if idx_b < nb - 1:
-                for j in range(idx_b + 1, nb):
-                    b2 = blocks[j]
-                    if (b, t["name"], b2) in shift_out:
-                        gwh_in = pulp.lpSum(
-                            shift_in[b, t["name"], b2, i2] * sub_hours[b2, i2]
-                            for _, i2, *_ in [s for s in sub_blocks if s[0] == b2]
-                        )
-                        gwh_out = shift_out[b, t["name"], b2] * hours[b]
-                        prob += gwh_in == gwh_out, \
-                            f"shcons_{_s(b)}_{t['name']}_to_{_s(b2)}"
+            for j in range(idx_b + 1, nb):
+                b2 = blocks[j]
+                if (b, t["name"], b2) not in shift_out:
+                    continue
+                cons_key = (b, t["name"], b2)
+                if cons_key in _seen_shift_cons:
+                    continue
+                _seen_shift_cons.add(cons_key)
 
-    # 2. Tier balance (block-level): served + shifted_out ≤ quantity
-    #    Sum across sub-blocks isn't needed; quantity applies per sub-block.
+                if not block_level_shift:
+                    gwh_in = pulp.lpSum(
+                        shift_in[b, t["name"], b2, i2] * sub_hours[b2, i2]
+                        for _, i2, *_ in [s for s in sub_blocks if s[0] == b2]
+                    )
+                else:
+                    gwh_in = _shift_in_blk[b, t["name"], b2] * hours[b2]
+
+                gwh_out = shift_out[b, t["name"], b2] * hours[b]
+                prob += gwh_in == gwh_out, \
+                    f"shcons_{_s(b)}_{t['name']}_to_{_s(b2)}"
+
+    # 2. Tier balance: served + shifted_out ≤ quantity
     for b, i, lbl, sh, av in sub_blocks:
         for t in demand_tiers[b]:
             shifts = []
@@ -300,7 +353,6 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
     prob += sto_level[sub_blocks[-1][0], sub_blocks[-1][1]] == sto_level_start, "scyc"
 
     # ── Solve ────────────────────────────────────────────────────────────
-    # CBC extracts dual variables (shadow prices); GLPK_CMD does not.
     solver = pulp.PULP_CBC_CMD(msg=0)
     status = prob.solve(solver)
 
@@ -311,14 +363,12 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
     def _v(var):
         return round(pulp.value(var), 4)
 
-    # Sub-block prices
     sb_prices = {}
     for b, i, lbl, sh, av in sub_blocks:
         con = prob.constraints[eb_names[b, i]]
         shadow = -con.pi if con.pi is not None else 0.0
         sb_prices[b, i] = round(shadow / sh, 2) if sh > 0 else 0.0
 
-    # Weighted-average block prices
     block_prices = {}
     for b in blocks:
         total_h = sum(sh for bb, ii, ll, sh, aa in sub_blocks if bb == b)
@@ -485,7 +535,6 @@ def solve(inputs: dict[str, Any]) -> dict[str, Any]:
                 ) * qty_src
 
     # ── Assemble results ─────────────────────────────────────────────────
-    # Convert sb_details to JSON-friendly format
     sb_list = []
     for b, i, *_ in sub_blocks:
         sb_list.append(sb_details[b, i])

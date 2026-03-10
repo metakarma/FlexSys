@@ -487,15 +487,24 @@ function buildZVCProfile() {
 function buildDemandTabs() {
   const tabs = document.getElementById("demand-tabs");
   const panels = document.getElementById("demand-panels");
+  const isLastBlock = (i) => i === DEFAULTS.blocks.length - 1;
   DEFAULTS.blocks.forEach((b, i) => {
     tabs.innerHTML += `<button class="tab-btn ${i===0?'active':''}" onclick="switchTab(this,'${b}')">${b}</button>`;
 
     let html = `<div class="tab-panel ${i===0?'active':''}" id="panel-${b}">`;
+    if (isLastBlock(i)) {
+      html += `<p style="font-size:13px;color:var(--muted);margin-bottom:12px;">This is the lowest-cost block &mdash; demand cannot shift further down, so no shift costs apply.</p>`;
+    }
     DEFAULTS.demand_tiers[b].forEach(t => {
+      const shiftField = isLastBlock(i) ? '' : `
+            <div class="field-group">
+              <label>Shift Cost (<span class="cur">£</span>/MWh)</label>
+              <input type="number" data-block="${b}" data-tier="${t.name}" data-field="shift_cost" value="${t.shift_cost}" step="any"/>
+            </div>`;
       html += `
         <div class="tier-section">
           <h4>${t.name}-Value Demand</h4>
-          <div class="grid-3">
+          <div class="${isLastBlock(i) ? 'grid-2' : 'grid-3'}">
             <div class="field-group">
               <label>Quantity (GW)</label>
               <input type="number" data-block="${b}" data-tier="${t.name}" data-field="quantity" value="${t.quantity}" step="any"/>
@@ -503,11 +512,7 @@ function buildDemandTabs() {
             <div class="field-group">
               <label>VoLL (<span class="cur">£</span>/MWh)</label>
               <input type="number" data-block="${b}" data-tier="${t.name}" data-field="voll" value="${t.voll}" step="any"/>
-            </div>
-            <div class="field-group">
-              <label>Shift Cost (<span class="cur">£</span>/MWh)</label>
-              <input type="number" data-block="${b}" data-tier="${t.name}" data-field="shift_cost" value="${t.shift_cost}" step="any"/>
-            </div>
+            </div>${shiftField}
           </div>
         </div>`;
     });
@@ -554,7 +559,7 @@ function gatherInputs() {
   const blocks = DEFAULTS.blocks;
   const hours = {}, demand_tiers = {}, expandable = {}, zvc_profile = {};
 
-  blocks.forEach(b => {
+  blocks.forEach((b, idx) => {
     hours[b] = +document.querySelector(`[data-ldc="${b}"][data-field="hours"]`).value;
 
     zvc_profile[b] = [];
@@ -567,12 +572,14 @@ function gatherInputs() {
     });
 
     demand_tiers[b] = [];
+    const isLast = (idx === blocks.length - 1);
     DEFAULTS.demand_tiers[b].forEach(t => {
+      const scEl = document.querySelector(`[data-block="${b}"][data-tier="${t.name}"][data-field="shift_cost"]`);
       demand_tiers[b].push({
         name: t.name,
         quantity: +document.querySelector(`[data-block="${b}"][data-tier="${t.name}"][data-field="quantity"]`).value,
         voll: +document.querySelector(`[data-block="${b}"][data-tier="${t.name}"][data-field="voll"]`).value,
-        shift_cost: +document.querySelector(`[data-block="${b}"][data-tier="${t.name}"][data-field="shift_cost"]`).value,
+        shift_cost: scEl ? +scEl.value : 0,
       });
     });
 
