@@ -129,6 +129,16 @@ tr:last-child td { border-bottom: none; }
 }
 .currency-bar select:focus { outline: none; border-color: var(--accent); }
 
+.dl-bar {
+  display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px;
+}
+.dl-btn {
+  font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+  cursor: pointer; transition: all .15s;
+}
+.dl-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
 footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; }
 
 /* Chat panel */
@@ -351,63 +361,77 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
     <div class="card">
       <h2><span class="dot" style="background:var(--success)"></span> Market Equilibrium Summary</h2>
       <div class="results-grid" id="summary-metrics"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlMetricsCSV('summary-metrics','market_summary')">CSV</button></div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:var(--accent)"></span> Optimal Capacity Mix</h2>
       <div class="plot-container" id="plot-capacity"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-capacity','capacity_mix')">PNG</button></div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:var(--muted)"></span> Input Load Duration Curve</h2>
       <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">Raw demand blocks as entered, before any optimisation, shifting, or storage.</p>
       <div class="plot-container" id="plot-input-ldc"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-input-ldc','input_ldc')">PNG</button></div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:var(--accent)"></span> Generation Duration Curve</h2>
       <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">Total generation by source in each sub-block after optimisation, sorted by GW.</p>
       <div class="plot-container" id="plot-ldc"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-ldc','generation_duration')">PNG</button></div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:var(--accent)"></span> Price Duration Curve</h2>
       <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">Clearing prices sorted high to low, with demand served, shifted, and storage activity per sub-block.</p>
       <div class="plot-container" id="plot-price-duration"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-price-duration','price_duration')">PNG</button></div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:#8b5cf6"></span> Demand &amp; Supply by Sub-Block (GW)</h2>
       <div class="plot-container" id="plot-dispatch"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-dispatch','dispatch_gw')">PNG</button></div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:#8b5cf6"></span> Energy by Sub-Block (GWh)</h2>
       <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">Each bar shows GW &times; hours for that sub-block. Storage charging appears as demand; storage discharging appears as supply.</p>
       <div class="plot-container" id="plot-dispatch-gwh"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-dispatch-gwh','dispatch_gwh')">PNG</button></div>
     </div>
 
     <div class="card" id="flexibility-card" style="display:none;">
       <h2><span class="dot" style="background:#f97316"></span> Demand Flexibility (GW)</h2>
       <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">Per-block Sankey diagrams showing demand allocation: served by generation, served by storage, shifted to a later block, or not served. Storage charging demand is also shown. Quantities are hours-weighted averages across sub-blocks (GW).</p>
       <div class="plot-container" id="plot-flexibility"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-flexibility','flexibility_gw')">PNG</button></div>
     </div>
 
     <div class="card" id="energy-flows-card" style="display:none;">
       <h2><span class="dot" style="background:#f97316"></span> Energy Transfers (GWh)</h2>
       <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">System-level Sankey showing energy (GWh) moved between sub-blocks via storage and demand shifting. Left nodes are energy exporters (storage charging or shifted-out demand); right nodes are importers (storage discharging or shifted-in demand) plus efficiency losses.</p>
       <div class="plot-container" id="plot-energy-flows"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-energy-flows','energy_transfers_gwh')">PNG</button></div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:var(--warn)"></span> Storage Activity</h2>
       <div id="storage-economics"></div>
       <div class="plot-container" id="plot-storage"></div>
+      <div class="dl-bar">
+        <button class="dl-btn" onclick="dlMetricsCSV('storage-economics','storage_economics')">CSV</button>
+        <button class="dl-btn" onclick="dlPlotPNG('plot-storage','storage_activity')">PNG</button>
+      </div>
     </div>
 
     <div class="card">
       <h2><span class="dot" style="background:var(--danger)"></span> Detailed Sub-Block Results</h2>
       <div id="detail-tables"></div>
+      <div class="dl-bar"><button class="dl-btn" onclick="dlDetailCSV()">CSV</button></div>
     </div>
   </div>
 
@@ -767,6 +791,78 @@ function renderResults(data, inputs) {
 
   document.getElementById("results").style.display = "block";
   document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+}
+
+// ── Download helpers ───────────────────────────────────────────────────
+function _dlLink(href, name) {
+  const a = document.createElement("a");
+  a.href = href; a.download = name; document.body.appendChild(a);
+  a.click(); document.body.removeChild(a);
+}
+
+function dlPlotPNG(containerId, name) {
+  const img = document.querySelector("#" + containerId + " img");
+  if (!img) return;
+  _dlLink(img.src, name + ".png");
+}
+
+function dlPlotCSV(containerId, name) {
+  const img = document.querySelector("#" + containerId + " img");
+  if (!img) return;
+  const src = img.src;
+  if (!src.startsWith("data:image/png;base64,")) return;
+  const b64 = src.split(",")[1];
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const blob = new Blob([bytes], {type: "image/png"});
+  _dlLink(URL.createObjectURL(blob), name + ".png");
+}
+
+function dlTableCSV(tableEl, name) {
+  if (!tableEl) return;
+  const rows = [];
+  tableEl.querySelectorAll("tr").forEach(tr => {
+    const cells = [];
+    tr.querySelectorAll("th, td").forEach(c => cells.push('"' + c.textContent.replace(/"/g, '""') + '"'));
+    rows.push(cells.join(","));
+  });
+  const blob = new Blob([rows.join("\n")], {type: "text/csv"});
+  _dlLink(URL.createObjectURL(blob), name + ".csv");
+}
+
+function dlMetricsCSV(containerId, name) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const rows = ["Metric,Value"];
+  el.querySelectorAll(".metric-card").forEach(mc => {
+    const val = mc.querySelector(".value")?.textContent?.trim() || "";
+    const lbl = mc.querySelector(".label")?.textContent?.trim() || "";
+    rows.push('"' + lbl.replace(/"/g, '""') + '","' + val.replace(/"/g, '""') + '"');
+  });
+  const blob = new Blob([rows.join("\n")], {type: "text/csv"});
+  _dlLink(URL.createObjectURL(blob), name + ".csv");
+}
+
+function dlDetailCSV() {
+  const el = document.getElementById("detail-tables");
+  if (!el) return;
+  const rows = [];
+  let section = "";
+  el.querySelectorAll("h3, table, p").forEach(node => {
+    if (node.tagName === "H3") {
+      section = node.textContent.trim();
+      rows.push(""); rows.push('"' + section.replace(/"/g, '""') + '"');
+    } else if (node.tagName === "TABLE") {
+      node.querySelectorAll("tr").forEach(tr => {
+        const cells = [];
+        tr.querySelectorAll("th, td").forEach(c => cells.push('"' + c.textContent.replace(/"/g, '""') + '"'));
+        rows.push(cells.join(","));
+      });
+    }
+  });
+  const blob = new Blob([rows.join("\n")], {type: "text/csv"});
+  _dlLink(URL.createObjectURL(blob), "detailed_results.csv");
 }
 
 init();
