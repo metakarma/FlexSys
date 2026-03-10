@@ -420,6 +420,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
     <textarea id="chat-input" placeholder="Ask about the model or results..." rows="1"
               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
     <button id="chat-send" onclick="sendChat()">Send</button>
+    <button onclick="copyChat()" style="padding:8px 12px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;flex-shrink:0;" title="Copy chat to clipboard">Copy</button>
     <button id="chat-clear" onclick="clearChat()" style="padding:8px 12px;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;flex-shrink:0;">Clear</button>
   </div>
 </div>
@@ -758,6 +759,19 @@ let lastResults = null;
 function clearChat() {
   chatHistory = [];
   document.getElementById("chat-messages").innerHTML = "";
+}
+
+function copyChat() {
+  if (!chatHistory.length) return;
+  const lines = chatHistory.map(h =>
+    (h.role === "user" ? "You: " : "Assistant: ") + h.content
+  );
+  navigator.clipboard.writeText(lines.join("\n\n")).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
 }
 
 function toggleChat() {

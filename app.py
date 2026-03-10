@@ -8,6 +8,8 @@ import io
 import base64
 import json
 import traceback
+import datetime
+import threading
 
 import matplotlib
 matplotlib.use("Agg")
@@ -71,6 +73,23 @@ CHAT_MODELS = {
 
 DEFAULT_CHAT_MODEL = "claude-opus-4-6"
 
+_CHAT_LOG = Path(__file__).with_name("chat_log.txt")
+_log_lock = threading.Lock()
+
+
+def _log_chat(ip: str, model: str, message: str, history: list, reply: str):
+    ts = datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    is_new = len(history) == 0
+    lines = [f"--- {'NEW CHAT' if is_new else 'CONTINUATION'} | {ts} | IP: {ip} | Model: {model} ---"]
+    if is_new:
+        lines.append("")
+    lines.append(f"USER: {message}")
+    lines.append(f"ASSISTANT: {reply}")
+    lines.append("")
+    with _log_lock:
+        with open(_CHAT_LOG, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -107,6 +126,10 @@ def chat():
         )
 
         reply = resp.content[0].text if resp.content else "No response."
+
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
+        _log_chat(ip, model_id, message, history, reply)
+
         return jsonify({"error": False, "reply": reply})
 
     except Exception as exc:
