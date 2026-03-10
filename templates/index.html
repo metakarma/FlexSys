@@ -998,15 +998,21 @@ async function sendChat() {
         current_results: resultsForContext,
       })
     });
-    const data = await resp.json();
     typing.remove();
 
-    if (data.error) {
-      appendChatMsg("error", data.reply);
+    const contentType = resp.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await resp.text();
+      appendChatMsg("error", `Server error (${resp.status}): ${text.substring(0, 200)}`);
     } else {
-      chatHistory.push({role: "user", content: message});
-      chatHistory.push({role: "assistant", content: data.reply});
-      appendChatMsg("assistant", data.reply);
+      const data = await resp.json();
+      if (data.error) {
+        appendChatMsg("error", data.reply);
+      } else {
+        chatHistory.push({role: "user", content: message});
+        chatHistory.push({role: "assistant", content: data.reply});
+        appendChatMsg("assistant", data.reply);
+      }
     }
   } catch (err) {
     typing.remove();

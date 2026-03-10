@@ -24,8 +24,15 @@ from pathlib import Path
 from model import default_inputs, solve
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
 
 _MODEL_SOURCE = Path(__file__).with_name("model.py").read_text(encoding="utf-8")
+
+
+@app.errorhandler(413)
+def request_too_large(e):
+    return jsonify({"error": True, "reply": "Request too large."}), 413
+
 
 sns.set_theme(style="whitegrid", palette="muted")
 
