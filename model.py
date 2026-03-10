@@ -370,17 +370,15 @@ def _solve_core(inputs: dict[str, Any], *,
         sb_prices[b, i] = round(shadow / sh, 2) if sh > 0 else 0.0
 
     # When sub-blocks are identical (block_level_shift), LP dual degeneracy
-    # can split the shadow value arbitrarily between sub-blocks.  The
-    # economically correct price is the hours-weighted average for the block.
+    # can split the shadow value arbitrarily between sub-blocks.
+    # Competitive pressures drive the clearing price to the minimum.
     if block_level_shift:
         for b in blocks:
-            b_subs = [(i, sh) for bb, i, ll, sh, aa in sub_blocks if bb == b]
-            total_h = sum(sh for _, sh in b_subs)
-            if total_h > 0:
-                avg_p = sum(sb_prices[b, i] * sh for i, sh in b_subs) / total_h
-                avg_p = round(avg_p, 2)
-                for i, _ in b_subs:
-                    sb_prices[b, i] = avg_p
+            b_subs = [i for bb, i, *_ in sub_blocks if bb == b]
+            if len(b_subs) >= 2:
+                min_p = min(sb_prices[b, i] for i in b_subs)
+                for i in b_subs:
+                    sb_prices[b, i] = min_p
 
     block_prices = {}
     for b in blocks:
