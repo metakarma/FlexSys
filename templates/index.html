@@ -344,6 +344,15 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
         </div>
       </div>
     </div>
+    <div style="margin-top:12px;">
+      <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Transmission &amp; Distribution</h4>
+      <div style="max-width:280px;">
+        <div class="field-group">
+          <label>T&amp;D Capacity Cost (<span class="cur">£</span>/kW/year)</label>
+          <input type="number" id="td_cost" step="any" min="0"/>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Action -->
@@ -581,6 +590,7 @@ function buildSupply() {
   document.getElementById("storage_energy_cost").value = s.storage_energy_cost;
   document.getElementById("storage_cycles").value = s.storage_cycles;
   document.getElementById("storage_efficiency").value = s.storage_efficiency;
+  document.getElementById("td_cost").value = s.td_cost || 0;
 }
 
 function switchTab(btn, block) {
@@ -637,6 +647,7 @@ function gatherInputs() {
       storage_energy_cost: +document.getElementById("storage_energy_cost").value,
       storage_cycles: +document.getElementById("storage_cycles").value,
       storage_efficiency: +document.getElementById("storage_efficiency").value,
+      td_cost: +document.getElementById("td_cost").value,
     }
   };
 }
@@ -704,6 +715,7 @@ function renderResults(data, inputs) {
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.gas)}</div><div class="label">Gas Capacity</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.storage_power)}</div><div class="label">Storage Power</div></div>`;
   m += `<div class="metric-card"><div class="value">${caps.storage_energy.toFixed(0)} GWh</div><div class="label">Storage Energy</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtGW(caps.td)}</div><div class="label">T&amp;D Capacity</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtCur(data.net_welfare)}</div><div class="label">Net Welfare</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtCur(data.total_consumer_value)}</div><div class="label">Consumer Value</div></div>`;
   m += `<div class="metric-card"><div class="value" style="color:var(--danger)">${fmtCur(data.total_variable_cost)}</div><div class="label">Variable Cost</div></div>`;

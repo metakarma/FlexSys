@@ -85,6 +85,7 @@ def default_inputs() -> dict[str, Any]:
         "storage_energy_cost": 10,
         "storage_cycles": 365,
         "storage_efficiency": 95,
+        "td_cost": 10,
     }
 
     return {
@@ -159,6 +160,7 @@ def _solve_core(inputs: dict[str, Any], *,
     cap_gas = pulp.LpVariable("cap_gas", 0)
     cap_sto_pw = pulp.LpVariable("cap_sto_pw", 0)
     cap_sto_en = pulp.LpVariable("cap_sto_en", 0)
+    cap_td = pulp.LpVariable("cap_td", 0)
 
     # ── Dispatch variables (per sub-block) ───────────────────────────────
     served = {}
@@ -260,6 +262,7 @@ def _solve_core(inputs: dict[str, Any], *,
     obj.append(-CAPITAL_CONV * supply["gas_capital_cost"] * cap_gas)
     obj.append(-CAPITAL_CONV * supply["storage_power_cost"] * cap_sto_pw)
     obj.append(-CAPITAL_CONV * eff_energy_cost * cap_sto_en)
+    obj.append(-CAPITAL_CONV * supply.get("td_cost", 0) * cap_td)
 
     prob += pulp.lpSum(obj), "Welfare"
 
@@ -335,6 +338,11 @@ def _solve_core(inputs: dict[str, Any], *,
         prob += sto_dis[k] <= cap_sto_pw, f"cdis_{_s(b)}_{i}"
         prob += sto_chg[k] <= cap_sto_pw, f"cchg_{_s(b)}_{i}"
 
+    # 3b. T&D capacity: peak network flow = total generation dispatched
+    for b, i, lbl, sh, av in sub_blocks:
+        k = sb_key(b, i)
+        prob += zvc[k] + gas[k] + sto_dis[k] <= cap_td, f"ctd_{_s(b)}_{i}"
+
     # 4. Storage energy level limits
     prob += sto_level_start <= cap_sto_en, "cslev_start"
     for b, i, *_ in sub_blocks:
@@ -397,6 +405,7 @@ def _solve_core(inputs: dict[str, Any], *,
         "gas": _v(cap_gas),
         "storage_power": _v(cap_sto_pw),
         "storage_energy": _v(cap_sto_en),
+        "td": _v(cap_td),
     }
 
     annual_capital = {
@@ -404,6 +413,7 @@ def _solve_core(inputs: dict[str, Any], *,
         "gas": round(capacities["gas"] * supply["gas_capital_cost"] * CAPITAL_CONV, 2),
         "storage_power": round(capacities["storage_power"] * supply["storage_power_cost"] * CAPITAL_CONV, 2),
         "storage_energy": round(capacities["storage_energy"] * eff_energy_cost * CAPITAL_CONV, 2),
+        "td": round(capacities["td"] * supply.get("td_cost", 0) * CAPITAL_CONV, 2),
     }
     annual_capital["total"] = round(sum(annual_capital.values()), 2)
 

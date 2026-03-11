@@ -451,9 +451,9 @@ def _plot_capacity(results: dict, cur: str = "$") -> str:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
 
-    techs = ["Renewables", "Gas", "Storage"]
-    cap_vals = [caps["zvc"], caps["gas"], caps["storage_power"]]
-    colors = ["#10B981", "#EF4444", "#3B82F6"]
+    techs = ["Renewables", "Gas", "Storage", "T&D"]
+    cap_vals = [caps["zvc"], caps["gas"], caps["storage_power"], caps.get("td", 0)]
+    colors = ["#10B981", "#EF4444", "#3B82F6", "#8B5CF6"]
 
     bars = ax1.bar(techs, cap_vals, color=colors, edgecolor="white", width=0.6)
     for bar, val in zip(bars, cap_vals):
@@ -463,9 +463,10 @@ def _plot_capacity(results: dict, cur: str = "$") -> str:
     ax1.set_ylabel("Capacity (GW)")
     ax1.set_title("Optimal Power Capacity", fontsize=12, fontweight="bold")
 
-    cost_labels = ["Renewables", "Gas", "Storage"]
+    cost_labels = ["Renewables", "Gas", "Storage", "T&D"]
     cost_vals = [costs["zvc"], costs["gas"],
-                 costs["storage_power"] + costs["storage_energy"]]
+                 costs["storage_power"] + costs["storage_energy"],
+                 costs.get("td", 0)]
     nonzero = [(l, v, c) for l, v, c in zip(cost_labels, cost_vals, colors) if v > 0]
     if nonzero:
         labels_nz, vals_nz, colors_nz = zip(*nonzero)
