@@ -327,12 +327,20 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
       <div>
         <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Storage</h4>
         <div class="field-group">
-          <label>Power Cost (<span class="cur">£</span>/kW/year)</label>
-          <input type="number" id="storage_power_cost" step="any"/>
+          <label>Duration (hours)</label>
+          <input type="number" id="storage_duration" step="any" min="0.1"/>
         </div>
         <div class="field-group">
-          <label>Energy Cost (<span class="cur">£</span>/kWh/year)</label>
-          <input type="number" id="storage_energy_cost" step="any"/>
+          <label>Connection Cost (<span class="cur">£</span>/MW)</label>
+          <input type="number" id="storage_connection_cost" step="any" min="0"/>
+        </div>
+        <div class="field-group">
+          <label>Cell Cost (<span class="cur">£</span>/MWh)</label>
+          <input type="number" id="storage_cell_cost" step="any" min="0"/>
+        </div>
+        <div class="field-group">
+          <label>Asset Life (years)</label>
+          <input type="number" id="storage_life" step="1" min="1"/>
         </div>
         <div class="field-group">
           <label>Cycles / Year</label>
@@ -586,8 +594,10 @@ function buildSupply() {
   document.getElementById("gas_variable_cost").value = s.gas_variable_cost;
   document.getElementById("carbon_price").value = s.carbon_price;
   document.getElementById("gas_emission_factor").value = s.gas_emission_factor;
-  document.getElementById("storage_power_cost").value = s.storage_power_cost;
-  document.getElementById("storage_energy_cost").value = s.storage_energy_cost;
+  document.getElementById("storage_duration").value = s.storage_duration;
+  document.getElementById("storage_connection_cost").value = s.storage_connection_cost;
+  document.getElementById("storage_cell_cost").value = s.storage_cell_cost;
+  document.getElementById("storage_life").value = s.storage_life;
   document.getElementById("storage_cycles").value = s.storage_cycles;
   document.getElementById("storage_efficiency").value = s.storage_efficiency;
   document.getElementById("td_cost").value = s.td_cost || 0;
@@ -643,8 +653,10 @@ function gatherInputs() {
       gas_variable_cost: +document.getElementById("gas_variable_cost").value,
       carbon_price: +document.getElementById("carbon_price").value,
       gas_emission_factor: +document.getElementById("gas_emission_factor").value,
-      storage_power_cost: +document.getElementById("storage_power_cost").value,
-      storage_energy_cost: +document.getElementById("storage_energy_cost").value,
+      storage_duration: +document.getElementById("storage_duration").value,
+      storage_connection_cost: +document.getElementById("storage_connection_cost").value,
+      storage_cell_cost: +document.getElementById("storage_cell_cost").value,
+      storage_life: +document.getElementById("storage_life").value,
       storage_cycles: +document.getElementById("storage_cycles").value,
       storage_efficiency: +document.getElementById("storage_efficiency").value,
       td_cost: +document.getElementById("td_cost").value,

@@ -81,8 +81,10 @@ def default_inputs() -> dict[str, Any]:
         "gas_variable_cost": 80,
         "carbon_price": 0,
         "gas_emission_factor": 0.5,
-        "storage_power_cost": 10,
-        "storage_energy_cost": 10,
+        "storage_duration": 4,
+        "storage_connection_cost": 150000,
+        "storage_cell_cost": 150000,
+        "storage_life": 15,
         "storage_cycles": 365,
         "storage_efficiency": 95,
         "td_cost": 10,
@@ -135,8 +137,25 @@ def _solve_core(inputs: dict[str, Any], *,
     carbon_adder = supply.get("carbon_price", 0) * supply.get("gas_emission_factor", 0.5)
     gas_vc = supply["gas_variable_cost"] + carbon_adder
     eta = supply["storage_efficiency"] / 100.0
+
+    # Storage cost derivation from user-facing CapEx inputs
+    # Connection cost (£/MW) and cell cost (£/MWh) are one-off CapEx.
+    # Annualise by dividing by asset life, convert to £/kW/yr and £/kWh/yr.
+    sto_life = max(supply.get("storage_life", 15), 1)
     annual_cycles = max(supply.get("storage_cycles", 365), 1)
-    eff_energy_cost = supply["storage_energy_cost"] / annual_cycles
+    sto_duration = max(supply.get("storage_duration", 4), 0.1)
+
+    if "storage_connection_cost" in supply:
+        storage_power_cost = supply["storage_connection_cost"] / 1000 / sto_life
+    else:
+        storage_power_cost = supply.get("storage_power_cost", 10)
+
+    if "storage_cell_cost" in supply:
+        storage_energy_cost = supply["storage_cell_cost"] / 1000 / sto_life
+    else:
+        storage_energy_cost = supply.get("storage_energy_cost", 10)
+
+    eff_energy_cost = storage_energy_cost / annual_cycles
 
     nb = len(blocks)
     prob = pulp.LpProblem("ElectricityMarket", pulp.LpMaximize)
@@ -260,7 +279,7 @@ def _solve_core(inputs: dict[str, Any], *,
 
     obj.append(-CAPITAL_CONV * supply["zvc_capital_cost"] * cap_zvc)
     obj.append(-CAPITAL_CONV * supply["gas_capital_cost"] * cap_gas)
-    obj.append(-CAPITAL_CONV * supply["storage_power_cost"] * cap_sto_pw)
+    obj.append(-CAPITAL_CONV * storage_power_cost * cap_sto_pw)
     obj.append(-CAPITAL_CONV * eff_energy_cost * cap_sto_en)
     obj.append(-CAPITAL_CONV * supply.get("td_cost", 0) * cap_td)
 
@@ -343,6 +362,9 @@ def _solve_core(inputs: dict[str, Any], *,
         k = sb_key(b, i)
         prob += zvc[k] + gas[k] + sto_dis[k] <= cap_td, f"ctd_{_s(b)}_{i}"
 
+    # 3c. Storage duration: energy capacity = power capacity × duration
+    prob += cap_sto_en == sto_duration * cap_sto_pw, "sto_duration"
+
     # 4. Storage energy level limits
     prob += sto_level_start <= cap_sto_en, "cslev_start"
     for b, i, *_ in sub_blocks:
@@ -411,7 +433,7 @@ def _solve_core(inputs: dict[str, Any], *,
     annual_capital = {
         "zvc": round(capacities["zvc"] * supply["zvc_capital_cost"] * CAPITAL_CONV, 2),
         "gas": round(capacities["gas"] * supply["gas_capital_cost"] * CAPITAL_CONV, 2),
-        "storage_power": round(capacities["storage_power"] * supply["storage_power_cost"] * CAPITAL_CONV, 2),
+        "storage_power": round(capacities["storage_power"] * storage_power_cost * CAPITAL_CONV, 2),
         "storage_energy": round(capacities["storage_energy"] * eff_energy_cost * CAPITAL_CONV, 2),
         "td": round(capacities["td"] * supply.get("td_cost", 0) * CAPITAL_CONV, 2),
     }
