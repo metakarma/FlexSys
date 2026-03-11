@@ -57,7 +57,7 @@ Storage inputs are specified as physical CapEx parameters: **duration** (hours),
 - Power cost (£/kW/yr) = (connection cost / 1000) × CRF
 - Energy cost (£/kWh/yr) = (cell cost / 1000) × CRF
 
-The energy cost is further amortised over the number of **cycles per year**. When discount rate is zero, CRF = 1/n (straight-line). A duration constraint links energy and power capacity: energy (GWh) = power (GW) × duration (h).
+When discount rate is zero, CRF = 1/n (straight-line). The **cycles per year** parameter scales the storage energy level constraints in the LP, giving it a realistic annual throughput budget (physical capacity × cycles) while keeping full annual capital costs in the objective. A duration constraint links energy and power capacity: energy (GWh) = power (GW) × duration (h).
 
 Round-trip efficiency (default 95%) creates an implicit cycling cost that depends on charge/discharge prices — this is an **output**, not an input.
 

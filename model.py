@@ -163,7 +163,12 @@ def _solve_core(inputs: dict[str, Any], *,
     else:
         storage_energy_cost = supply.get("storage_energy_cost", 10)
 
-    eff_energy_cost = storage_energy_cost / annual_cycles
+    # The LDC tracks storage level across sub-blocks — effectively one "cycle".
+    # Real batteries cycle many times per year.  We keep full annual capital
+    # costs in the objective but scale the storage level constraints by
+    # annual_cycles, giving the LP a throughput budget of
+    # cap_sto_en × annual_cycles.  This lets the LP see realistic energy
+    # throughput while paying the true annual CapEx.
 
     nb = len(blocks)
     prob = pulp.LpProblem("ElectricityMarket", pulp.LpMaximize)
@@ -288,7 +293,7 @@ def _solve_core(inputs: dict[str, Any], *,
     obj.append(-CAPITAL_CONV * supply["zvc_capital_cost"] * cap_zvc)
     obj.append(-CAPITAL_CONV * supply["gas_capital_cost"] * cap_gas)
     obj.append(-CAPITAL_CONV * storage_power_cost * cap_sto_pw)
-    obj.append(-CAPITAL_CONV * eff_energy_cost * cap_sto_en)
+    obj.append(-CAPITAL_CONV * storage_energy_cost * cap_sto_en)
     obj.append(-CAPITAL_CONV * supply.get("td_cost", 0) * cap_td)
 
     prob += pulp.lpSum(obj), "Welfare"
@@ -373,10 +378,10 @@ def _solve_core(inputs: dict[str, Any], *,
     # 3c. Storage duration: energy capacity = power capacity × duration
     prob += cap_sto_en == sto_duration * cap_sto_pw, "sto_duration"
 
-    # 4. Storage energy level limits
-    prob += sto_level_start <= cap_sto_en, "cslev_start"
+    # 4. Storage energy level limits (scaled by annual_cycles for throughput)
+    prob += sto_level_start <= cap_sto_en * annual_cycles, "cslev_start"
     for b, i, *_ in sub_blocks:
-        prob += sto_level[b, i] <= cap_sto_en, f"cslev_{_s(b)}_{i}"
+        prob += sto_level[b, i] <= cap_sto_en * annual_cycles, f"cslev_{_s(b)}_{i}"
 
     # 5. Storage dynamics (sequential: lo then hi within each block)
     prev = sto_level_start
@@ -442,7 +447,7 @@ def _solve_core(inputs: dict[str, Any], *,
         "zvc": round(capacities["zvc"] * supply["zvc_capital_cost"] * CAPITAL_CONV, 2),
         "gas": round(capacities["gas"] * supply["gas_capital_cost"] * CAPITAL_CONV, 2),
         "storage_power": round(capacities["storage_power"] * storage_power_cost * CAPITAL_CONV, 2),
-        "storage_energy": round(capacities["storage_energy"] * eff_energy_cost * CAPITAL_CONV, 2),
+        "storage_energy": round(capacities["storage_energy"] * storage_energy_cost * CAPITAL_CONV, 2),
         "td": round(capacities["td"] * supply.get("td_cost", 0) * CAPITAL_CONV, 2),
     }
     annual_capital["total"] = round(sum(annual_capital.values()), 2)
@@ -512,7 +517,7 @@ def _solve_core(inputs: dict[str, Any], *,
             "storage_discharge": _v(sto_dis[k]),
             "storage_charge": _v(sto_chg[k]),
         }
-        d["storage"] = {"level": _v(sto_level[k])}
+        d["storage"] = {"level": round(_v(sto_level[k]) / annual_cycles, 4)}
 
         d["total_served_gw"] = round(
             sum(ti["served"] for ti in d["demand_tiers"])

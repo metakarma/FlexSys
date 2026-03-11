@@ -292,6 +292,8 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>A <strong>duration constraint</strong> ensures that energy capacity (GWh) = power capacity (GW) &times; duration (h), so the optimiser determines how much storage to build as a single decision, with the duration as a design parameter.</p>
 
+<p>Because the LDC representation can only track one storage cycle through the sub-block sequence, the model scales the storage energy level constraints by <strong>cycles per year</strong>. This gives the LP a realistic annual throughput budget (physical energy capacity &times; cycles) while keeping full annual capital costs in the objective. The result is that the LP makes correct investment decisions: it compares the full annual CapEx against the full annual arbitrage value from repeated cycling.</p>
+
 <div class="callout">
   <strong>No fuel cost for storage:</strong> Unlike gas, storage has no direct fuel cost. Its "cost" comes from efficiency losses and capital amortisation. The model works this out endogenously&mdash;the implied cycling cost is an <em>output</em>, not an input.
 </div>
