@@ -344,14 +344,6 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> str:
                 hatch="///", alpha=0.6, align="edge",
             )
 
-        mid_x = cum_hours + h / 2
-        block_color = BLOCK_COLORS.get(b, "#6366F1")
-        ax.text(mid_x, gen / 2,
-                f"{b}\n({sb['label']})\n{gen:.1f} GW\n{cur}{sb['price']:,.0f}/MWh",
-                ha="center", va="center", fontsize=8, fontweight="bold",
-                color="white",
-                bbox=dict(boxstyle="round,pad=0.3", fc=block_color, alpha=0.75))
-
         cum_hours += h
 
     ax.set_xlabel("Cumulative Hours", fontsize=11)
@@ -403,24 +395,6 @@ def _plot_price_duration(inputs: dict, results: dict, cur: str = "$") -> str:
         curtailed_gw = sum(t["lost"] for t in sb["demand_tiers"])
         sto_dis = sb["supply"]["storage_discharge"]
         sto_chg = sb["supply"]["storage_charge"]
-
-        lines = [f"{b}", f"({sb['label']})", f"{cur}{price:,.0f}/MWh", ""]
-        lines.append(f"Served: {served_gw:.1f} GW")
-        if shifted_in_gw > 0.01:
-            lines.append(f"Shift in: +{shifted_in_gw:.1f} GW")
-        if shifted_out_gw > 0.01:
-            lines.append(f"Shift out: \u2212{shifted_out_gw:.1f} GW")
-        if curtailed_gw > 0.01:
-            lines.append(f"Curtailed: {curtailed_gw:.1f} GW")
-        if sto_dis > 0.01 or sto_chg > 0.01:
-            lines.append(f"Sto: +{sto_dis:.1f}/\u2212{sto_chg:.1f} GW")
-
-        mid_x = cum_hours + h / 2
-        mid_y = price / 2
-        ax.text(mid_x, mid_y, "\n".join(lines),
-                ha="center", va="center", fontsize=7.5, fontweight="bold",
-                color="white",
-                bbox=dict(boxstyle="round,pad=0.3", fc=block_color, alpha=0.80))
 
         cum_hours += h
 

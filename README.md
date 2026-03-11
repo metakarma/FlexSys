@@ -103,6 +103,7 @@ An expandable chat panel (toggle via the **AI Chat** button, bottom-right) lets 
 - **Clear Chat** button to reset the conversation history.
 - **Copy Chat** button to copy the full conversation to clipboard.
 - **Download buttons** on all output charts (PNG) and tables (CSV).
+- **Hover pop-outs** on the generation duration curve and price duration curve to inspect each sub-block without cluttering the chart.
 
 ## User Guide
 

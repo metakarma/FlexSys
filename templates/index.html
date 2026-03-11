@@ -104,7 +104,52 @@ td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
 tr:last-child td { border-bottom: none; }
 
 .plot-container { margin: 20px 0; text-align: center; }
-.plot-container img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+.plot-container img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); display:block; width:100%; }
+.interactive-plot {
+  position: relative; display: inline-block; width: 100%;
+  max-width: 100%;
+}
+.plot-hover-layer {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.plot-hover-band {
+  position: absolute; top: 11%; height: 76%; pointer-events: auto;
+  background: rgba(59,130,246,0); transition: background .15s ease;
+  outline: none;
+}
+.plot-hover-band:hover,
+.plot-hover-band:focus {
+  background: rgba(59,130,246,.10);
+}
+.plot-popout {
+  position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+  min-width: 210px; max-width: 280px; padding: 10px 12px;
+  background: rgba(15,23,42,.96); color: #fff; border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.22); text-align: left;
+  font-size: 12px; line-height: 1.45; opacity: 0; visibility: hidden;
+  transition: opacity .15s ease, visibility .15s ease;
+  z-index: 20;
+}
+.plot-popout::after {
+  content: ""; position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 6px solid rgba(15,23,42,.96);
+}
+.plot-hover-band:hover .plot-popout,
+.plot-hover-band:focus .plot-popout {
+  opacity: 1; visibility: visible;
+}
+.plot-popout h4 {
+  margin: 0 0 4px; font-size: 12px; font-weight: 700; color: #fff;
+}
+.plot-popout .muted {
+  color: #cbd5e1; font-size: 11px; margin-bottom: 6px;
+}
+.plot-popout .line { margin: 2px 0; }
+@media (max-width: 768px) {
+  .plot-hover-band { top: 9%; height: 79%; }
+  .plot-popout { min-width: 180px; max-width: 220px; font-size: 11px; }
+}
 
 .error-box {
   background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
@@ -817,6 +862,102 @@ async function runOptimise() {
 function fmtCur(n) { return getCur() + Number(n).toLocaleString(undefined, {maximumFractionDigits:0}); }
 function fmtGW(n) { return n.toFixed(1) + " GW"; }
 
+const BLOCK_COLOR_MAP = {
+  "Winter Peak": "#EF4444",
+  "Shoulder": "#F59E0B",
+  "Low Demand": "#10B981",
+};
+
+function escHtml(v) {
+  return String(v ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+function renderDurationHoverPlot(containerId, imgSrc, items, buildTooltipHtml) {
+  const container = document.getElementById(containerId);
+  const totalHours = items.reduce((sum, item) => sum + (item.hours || 0), 0);
+  if (!totalHours) {
+    container.innerHTML = `<img src="${imgSrc}" alt="Plot"/>`;
+    return;
+  }
+
+  let cum = 0;
+  let bands = "";
+  items.forEach((item, idx) => {
+    const left = 8 + (cum / totalHours) * 86;
+    const width = (item.hours / totalHours) * 86;
+    const bg = BLOCK_COLOR_MAP[item.block] || "#3B82F6";
+    bands += `
+      <div class="plot-hover-band" tabindex="0"
+           style="left:${left}%;width:${Math.max(width, 1.2)}%;"
+           aria-label="${escHtml(item.block)} ${escHtml(item.label)} details">
+        <div class="plot-popout" style="border-top:3px solid ${bg};">
+          ${buildTooltipHtml(item, idx)}
+        </div>
+      </div>`;
+    cum += item.hours;
+  });
+
+  container.innerHTML = `
+    <div class="interactive-plot">
+      <img src="${imgSrc}" alt="Plot"/>
+      <div class="plot-hover-layer">${bands}</div>
+    </div>`;
+}
+
+function renderGenerationDurationPlot(data) {
+  const items = [...data.sub_blocks]
+    .map(sb => {
+      const gen = sb.supply.zvc + sb.supply.gas + sb.supply.storage_discharge;
+      const curtailed = sb.demand_tiers.reduce((sum, t) => sum + t.lost, 0);
+      return {...sb, generation_total: gen, curtailed};
+    })
+    .sort((a, b) => b.generation_total - a.generation_total);
+
+  renderDurationHoverPlot("plot-ldc", data.plots.ldc, items, (sb) => `
+    <h4>${escHtml(sb.block)}</h4>
+    <div class="muted">${escHtml(sb.label)} · ${sb.hours.toFixed(0)}h</div>
+    <div class="line"><strong>Generation:</strong> ${sb.generation_total.toFixed(1)} GW</div>
+    <div class="line">Renewables: ${sb.supply.zvc.toFixed(1)} GW</div>
+    <div class="line">Gas: ${sb.supply.gas.toFixed(1)} GW</div>
+    <div class="line">Storage: ${sb.supply.storage_discharge.toFixed(1)} GW</div>
+    ${sb.curtailed > 0.01 ? `<div class="line">Curtailed: ${sb.curtailed.toFixed(1)} GW</div>` : ""}
+    <div class="line"><strong>Price:</strong> ${fmtCur(sb.price)}/MWh</div>
+  `);
+}
+
+function renderPriceDurationPlot(data) {
+  const items = [...data.sub_blocks]
+    .map(sb => {
+      const served = sb.demand_tiers.reduce((sum, t) => sum + t.served, 0);
+      const shiftedOut = sb.demand_tiers.reduce((sum, t) =>
+        sum + Object.values(t.shifted_out || {}).reduce((a, b) => a + b, 0), 0);
+      const curtailed = sb.demand_tiers.reduce((sum, t) => sum + t.lost, 0);
+      return {
+        ...sb,
+        served_gw: served,
+        shifted_out_gw: shiftedOut,
+        shifted_in_gw: sb.shifted_in_total || 0,
+        curtailed_gw: curtailed,
+      };
+    })
+    .sort((a, b) => b.price - a.price);
+
+  renderDurationHoverPlot("plot-price-duration", data.plots.price_duration, items, (sb) => `
+    <h4>${escHtml(sb.block)}</h4>
+    <div class="muted">${escHtml(sb.label)} · ${sb.hours.toFixed(0)}h</div>
+    <div class="line"><strong>Price:</strong> ${fmtCur(sb.price)}/MWh</div>
+    <div class="line">Served: ${sb.served_gw.toFixed(1)} GW</div>
+    ${sb.shifted_in_gw > 0.01 ? `<div class="line">Shift in: +${sb.shifted_in_gw.toFixed(1)} GW</div>` : ""}
+    ${sb.shifted_out_gw > 0.01 ? `<div class="line">Shift out: -${sb.shifted_out_gw.toFixed(1)} GW</div>` : ""}
+    ${sb.curtailed_gw > 0.01 ? `<div class="line">Curtailed: ${sb.curtailed_gw.toFixed(1)} GW</div>` : ""}
+    ${(sb.supply.storage_discharge > 0.01 || sb.supply.storage_charge > 0.01)
+      ? `<div class="line">Storage: +${sb.supply.storage_discharge.toFixed(1)} / -${sb.supply.storage_charge.toFixed(1)} GW</div>`
+      : ""}
+  `);
+}
+
 function renderResults(data, inputs) {
   const blocks = data.blocks;
   const caps = data.capacities;
@@ -853,8 +994,8 @@ function renderResults(data, inputs) {
   // Plots
   document.getElementById("plot-capacity").innerHTML = `<img src="${data.plots.capacity}" alt="Capacity"/>`;
   document.getElementById("plot-input-ldc").innerHTML = `<img src="${data.plots.input_ldc}" alt="Input LDC"/>`;
-  document.getElementById("plot-ldc").innerHTML = `<img src="${data.plots.ldc}" alt="LDC"/>`;
-  document.getElementById("plot-price-duration").innerHTML = `<img src="${data.plots.price_duration}" alt="Price Duration"/>`;
+  renderGenerationDurationPlot(data);
+  renderPriceDurationPlot(data);
   document.getElementById("plot-dispatch").innerHTML = `<img src="${data.plots.dispatch}" alt="Dispatch GW"/>`;
   document.getElementById("plot-dispatch-gwh").innerHTML = `<img src="${data.plots.dispatch_gwh}" alt="Dispatch GWh"/>`;
   document.getElementById("plot-storage").innerHTML = `<img src="${data.plots.storage}" alt="Storage"/>`;
