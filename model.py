@@ -106,7 +106,8 @@ def default_inputs() -> dict[str, Any]:
 # Solve
 # ---------------------------------------------------------------------------
 
-CAPITAL_CONV = 1000  # $/kW/yr × GW → model-units/yr
+ENERGY_CONV = 1000      # GW × h → MWh
+CAPITAL_CONV = 1_000_000  # GW/GWh × (kW/kWh) → annual currency
 
 
 def solve(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -276,9 +277,9 @@ def _solve_core(inputs: dict[str, Any], *,
     for b, i, lbl, sh, av in sub_blocks:
         k = sb_key(b, i)
         for t in demand_tiers[b]:
-            obj.append(sh * t["voll"] * served[b, i, t["name"]])
-        obj.append(sh * expandable[b]["value"] * expand[b, i])
-        obj.append(-sh * gas_vc * gas[k])
+            obj.append(ENERGY_CONV * sh * t["voll"] * served[b, i, t["name"]])
+        obj.append(ENERGY_CONV * sh * expandable[b]["value"] * expand[b, i])
+        obj.append(-ENERGY_CONV * sh * gas_vc * gas[k])
 
     for idx_b, b in enumerate(blocks):
         for idx_src in range(idx_b):
@@ -286,7 +287,9 @@ def _solve_core(inputs: dict[str, Any], *,
             for t in demand_tiers[b_src]:
                 if (b_src, t["name"], b) in shift_out:
                     obj.append(
-                        hours[b_src] * (t["voll"] - t["shift_cost"])
+                        ENERGY_CONV
+                        * hours[b_src]
+                        * (t["voll"] - t["shift_cost"])
                         * shift_out[b_src, t["name"], b]
                     )
 
@@ -410,7 +413,7 @@ def _solve_core(inputs: dict[str, Any], *,
     for b, i, lbl, sh, av in sub_blocks:
         con = prob.constraints[eb_names[b, i]]
         shadow = -con.pi if con.pi is not None else 0.0
-        sb_prices[b, i] = round(shadow / sh, 2) if sh > 0 else 0.0
+        sb_prices[b, i] = round(shadow / (ENERGY_CONV * sh), 2) if sh > 0 else 0.0
 
     # When sub-blocks are identical (block_level_shift), LP dual degeneracy
     # can split the shadow value arbitrarily between sub-blocks.
@@ -444,11 +447,11 @@ def _solve_core(inputs: dict[str, Any], *,
     }
 
     annual_capital = {
-        "zvc": round(capacities["zvc"] * supply["zvc_capital_cost"] * CAPITAL_CONV, 2),
-        "gas": round(capacities["gas"] * supply["gas_capital_cost"] * CAPITAL_CONV, 2),
-        "storage_power": round(capacities["storage_power"] * storage_power_cost * CAPITAL_CONV, 2),
-        "storage_energy": round(capacities["storage_energy"] * storage_energy_cost * CAPITAL_CONV, 2),
-        "td": round(capacities["td"] * supply.get("td_cost", 0) * CAPITAL_CONV, 2),
+        "zvc": round(pulp.value(cap_zvc) * supply["zvc_capital_cost"] * CAPITAL_CONV, 2),
+        "gas": round(pulp.value(cap_gas) * supply["gas_capital_cost"] * CAPITAL_CONV, 2),
+        "storage_power": round(pulp.value(cap_sto_pw) * storage_power_cost * CAPITAL_CONV, 2),
+        "storage_energy": round(pulp.value(cap_sto_en) * storage_energy_cost * CAPITAL_CONV, 2),
+        "td": round(pulp.value(cap_td) * supply.get("td_cost", 0) * CAPITAL_CONV, 2),
     }
     annual_capital["total"] = round(sum(annual_capital.values()), 2)
 
@@ -569,11 +572,11 @@ def _solve_core(inputs: dict[str, Any], *,
     total_cv = 0.0
     total_vc = 0.0
     for b, i, lbl, sh, av in sub_blocks:
-        d = sb_details[b, i]
-        for t in d["demand_tiers"]:
-            total_cv += sh * t["voll"] * t["served"]
-        total_cv += sh * d["expandable"]["value"] * d["expandable"]["activated"]
-        total_vc += sh * gas_vc * d["supply"]["gas"]
+        k = sb_key(b, i)
+        for t in demand_tiers[b]:
+            total_cv += ENERGY_CONV * sh * t["voll"] * pulp.value(served[b, i, t["name"]])
+        total_cv += ENERGY_CONV * sh * expandable[b]["value"] * pulp.value(expand[b, i])
+        total_vc += ENERGY_CONV * sh * gas_vc * pulp.value(gas[k])
 
     seen_shifts = set()
     for b, i, lbl, sh, av in sub_blocks:
@@ -585,10 +588,13 @@ def _solve_core(inputs: dict[str, Any], *,
                     x for x in demand_tiers[si["from_block"]]
                     if x["name"] == si["tier"]
                 )
-                qty_src = si.get("quantity_src_gw", si["quantity"])
-                total_cv += hours[si["from_block"]] * (
-                    src_tier["voll"] - src_tier["shift_cost"]
-                ) * qty_src
+                qty_src = pulp.value(shift_out[si["from_block"], si["tier"], b])
+                total_cv += (
+                    ENERGY_CONV
+                    * hours[si["from_block"]]
+                    * (src_tier["voll"] - src_tier["shift_cost"])
+                    * qty_src
+                )
 
     # ── Assemble results ─────────────────────────────────────────────────
     sb_list = []

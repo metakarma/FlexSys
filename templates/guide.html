@@ -322,7 +322,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>The objective is to <strong>maximise net welfare</strong>: the total value that consumers place on the electricity they receive, minus the total cost of providing it (both capital and operating costs).</p>
 
-<p>Think of it as a social planner trying to make the best possible use of available resources. The planner values each MWh of served demand at its VoLL, credits shifted demand at VoLL minus the shift cost, and charges for gas generation at its variable cost and all technologies at their capital cost.</p>
+<p>Think of it as a social planner trying to make the best possible use of available resources. The planner values each MWh of served demand at its VoLL, credits shifted demand at VoLL minus the shift cost, and charges for gas generation at its variable cost and all technologies at their capital cost. Internally, the model converts GW × hours into MWh (×1000) and GW/GWh into kW/kWh (×1,000,000), so all welfare and cost outputs are reported in full annual currency units rather than “thousands”.</p>
 
 <p>The optimisation is subject to physical and economic constraints:</p>
 <ul>
@@ -342,12 +342,12 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 <p>For those who want the mathematics, here is the LP formulation. The model maximises:</p>
 
 <div class="math">
-  max &ensp; &sum;<sub>b,i</sub> h<sub>b,i</sub> &middot; [ &sum;<sub>t</sub> VoLL<sub>b,t</sub> &middot; served<sub>b,i,t</sub> + v<sub>b</sub><sup>exp</sup> &middot; expand<sub>b,i</sub> &minus; c<sub>gas</sub><sup>var</sup> &middot; gas<sub>b,i</sub> ]
-  &ensp; + &ensp; &sum;<sub>shifts</sub> h<sub>src</sub> &middot; (VoLL<sub>t</sub> &minus; shiftcost<sub>t</sub>) &middot; shift_out<sub>src,t,dest</sub>
-  &ensp; &minus; &ensp; C<sub>ren</sub> &middot; K<sub>ren</sub> &minus; C<sub>gas</sub> &middot; K<sub>gas</sub> &minus; C<sub>sto_pw</sub> &middot; K<sub>sto_pw</sub> &minus; (C<sub>sto_en</sub> / cycles) &middot; K<sub>sto_en</sub> &minus; C<sub>td</sub> &middot; K<sub>td</sub>
+  max &ensp; 1000 &middot; &sum;<sub>b,i</sub> h<sub>b,i</sub> &middot; [ &sum;<sub>t</sub> VoLL<sub>b,t</sub> &middot; served<sub>b,i,t</sub> + v<sub>b</sub><sup>exp</sup> &middot; expand<sub>b,i</sub> &minus; c<sub>gas</sub><sup>var</sup> &middot; gas<sub>b,i</sub> ]
+  &ensp; + &ensp; 1000 &middot; &sum;<sub>shifts</sub> h<sub>src</sub> &middot; (VoLL<sub>t</sub> &minus; shiftcost<sub>t</sub>) &middot; shift_out<sub>src,t,dest</sub>
+  &ensp; &minus; &ensp; 10<sup>6</sup> &middot; [ C<sub>ren</sub> &middot; K<sub>ren</sub> + C<sub>gas</sub> &middot; K<sub>gas</sub> + C<sub>sto_pw</sub> &middot; K<sub>sto_pw</sub> + C<sub>sto_en</sub> &middot; K<sub>sto_en</sub> + C<sub>td</sub> &middot; K<sub>td</sub> ]
 </div>
 
-<p>Where <em>b</em> indexes blocks, <em>i</em> indexes sub-blocks within each block, <em>t</em> indexes demand tiers, <em>h</em> are hours, <em>K</em> are capacity variables, and <em>C</em> are capital costs. C<sub>sto_pw</sub> and C<sub>sto_en</sub> are derived from the connection and cell CapEx inputs divided by asset life. The variable cost of gas includes any carbon adder: c<sub>gas</sub><sup>var</sup> = variable_cost + carbon_price &times; emission_factor.</p>
+<p>Where <em>b</em> indexes blocks, <em>i</em> indexes sub-blocks within each block, <em>t</em> indexes demand tiers, <em>h</em> are hours, <em>K</em> are capacity variables, and <em>C</em> are capital costs. C<sub>sto_pw</sub> and C<sub>sto_en</sub> are derived from the connection and cell CapEx inputs using the CRF. The factor 1000 converts GWh into MWh in the flow terms; the factor 10<sup>6</sup> converts GW/GWh into kW/kWh in the capital terms. The variable cost of gas includes any carbon adder: c<sub>gas</sub><sup>var</sup> = variable_cost + carbon_price &times; emission_factor.</p>
 
 <p>Subject to (for all sub-blocks <em>b,i</em>):</p>
 <ul>

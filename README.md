@@ -83,6 +83,15 @@ Expandable demand activates when the price drops below its value:
 
 Shadow prices on the energy-balance constraints give **market-clearing prices** for each sub-block (6 prices total). When renewables capacity is zero and sub-blocks are identical, the model uses the minimum shadow price to reflect competitive price formation.
 
+### Monetary units
+
+All welfare and cost outputs are reported in full annual currency units. Internally, the model converts:
+
+- **GW × hours → MWh** using `× 1000` for all demand value, gas variable cost, and shift-value terms
+- **GW/GWh → kW/kWh** using `× 1,000,000` for all annual capital-cost terms
+
+This keeps the optimisation and reported totals consistent with the input units shown in the UI.
+
 ## AI Chat Assistant
 
 An expandable chat panel (toggle via the **AI Chat** button, bottom-right) lets users interrogate model results conversationally using Anthropic's Claude. Features:
