@@ -2,7 +2,7 @@
 
 A web application that solves a welfare-maximising linear program for electricity market price formation. The model simultaneously determines **optimal capacity investment** and **dispatch** for four supply-side elements — renewables (zero variable cost), gas peakers, battery storage, and transmission & distribution — across a three-block Load Duration Curve with **renewables intermittency sub-blocks**, flexible (shiftable) and expandable demand.
 
-A currency selector (£/$/€) at the top of the UI updates all labels and plot annotations.
+A currency selector (£/$/€) at the top of the UI updates all labels and plot annotations. Each input section has a hover-over **info button** (ⓘ) that shows the relevant portion of the user guide inline.
 
 ## Quick Start
 

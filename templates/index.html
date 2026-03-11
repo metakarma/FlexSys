@@ -131,6 +131,35 @@ tr:last-child td { border-bottom: none; }
 }
 .currency-bar select:focus { outline: none; border-color: var(--accent); }
 
+.info-wrap { position: relative; display: inline-block; margin-left: 8px; vertical-align: middle; }
+.info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--accent);
+  background: none; color: var(--accent); font-size: 12px; font-weight: 700;
+  cursor: help; line-height: 1; font-family: Georgia, serif; font-style: italic;
+}
+.info-btn:hover { background: var(--accent); color: #fff; }
+.info-tip {
+  display: none; position: absolute; left: 28px; top: -8px; z-index: 900;
+  width: 420px; max-height: 400px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.15); font-size: 13px; line-height: 1.6;
+  color: var(--text);
+}
+.info-tip h4 { font-size: 14px; font-weight: 700; margin: 0 0 8px; color: var(--accent-dark); }
+.info-tip p { margin: 0 0 8px; font-size: 13px; }
+.info-tip ul, .info-tip ol { margin: 0 0 8px 18px; padding: 0; }
+.info-tip li { margin-bottom: 4px; font-size: 13px; }
+.info-tip table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
+.info-tip th { text-align: left; padding: 4px 6px; background: var(--bg); font-size: 11px; text-transform: uppercase; color: var(--muted); }
+.info-tip td { padding: 4px 6px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.info-tip .callout { background: #eff6ff; border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 8px 0; font-size: 12px; }
+.info-wrap:hover .info-tip, .info-wrap:focus-within .info-tip { display: block; }
+@media (max-width: 900px) {
+  .info-tip { left: auto; right: 0; width: 300px; }
+}
+
 .dl-bar {
   display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px;
 }
@@ -277,27 +306,84 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
   <!-- LDC Blocks -->
   <div class="card">
-    <h2><span class="dot" style="background:var(--accent)"></span> Load Duration Curve Blocks</h2>
+    <h2><span class="dot" style="background:var(--accent)"></span> Load Duration Curve Blocks
+      <span class="info-wrap"><span class="info-btn">i</span><div class="info-tip">
+        <h4>Load Duration Curve Blocks</h4>
+        <p>Real electricity demand varies hour by hour. Rather than modelling all 8,760 hours, the model uses a <strong>Load Duration Curve</strong> that groups hours by demand level into three blocks.</p>
+        <table>
+          <tr><th>Block</th><th>Represents</th><th>Default</th></tr>
+          <tr><td>Winter Peak</td><td>Coldest, highest-demand hours</td><td>300h</td></tr>
+          <tr><td>Shoulder</td><td>Spring, autumn, milder winter</td><td>3,000h</td></tr>
+          <tr><td>Low Demand</td><td>Summer &amp; overnight</td><td>5,460h</td></tr>
+        </table>
+        <p>Set the <strong>hours</strong> for each block (should sum to 8,760). Demand levels come from the tier definitions.</p>
+        <div class="callout">These are not calendar months &mdash; think of them as buckets grouping hours with similar demand and weather conditions.</div>
+      </div></span>
+    </h2>
     <div class="grid-3" id="ldc-inputs"></div>
   </div>
 
   <!-- ZVC Profile -->
   <div class="card">
-    <h2><span class="dot" style="background:var(--success)"></span> Renewables Availability Profile (Sub-Blocks)</h2>
+    <h2><span class="dot" style="background:var(--success)"></span> Renewables Availability Profile (Sub-Blocks)
+      <span class="info-wrap"><span class="info-btn">i</span><div class="info-tip">
+        <h4>Renewables Intermittency</h4>
+        <p>Each LDC block is split into two sub-blocks to capture intermittency:</p>
+        <ul>
+          <li><strong>Low Renewables</strong> &mdash; hours when renewable output is scarce</li>
+          <li><strong>High Renewables</strong> &mdash; hours when output is plentiful</li>
+        </ul>
+        <table>
+          <tr><th>Parameter</th><th>Meaning</th></tr>
+          <tr><td>% Hours</td><td>Fraction of block hours in this sub-block (must sum to 100%)</td></tr>
+          <tr><td>% Availability</td><td>Fraction of installed renewables capacity available</td></tr>
+        </table>
+        <p>This creates intra-block price differentials that make <strong>storage valuable within a block</strong> &mdash; charging when renewables are plentiful, discharging when scarce.</p>
+      </div></span>
+    </h2>
     <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">Each block is split into Low Renewables and High Renewables sub-blocks to capture intermittency. % Hours must sum to 100 per block.</p>
     <div class="grid-3" id="zvc-profile-inputs"></div>
   </div>
 
   <!-- Demand Tiers -->
   <div class="card">
-    <h2><span class="dot" style="background:#8b5cf6"></span> Demand Tiers &amp; Expandable Demand</h2>
+    <h2><span class="dot" style="background:#8b5cf6"></span> Demand Tiers &amp; Expandable Demand
+      <span class="info-wrap"><span class="info-btn">i</span><div class="info-tip">
+        <h4>Demand Tiers</h4>
+        <p>Demand in each block is divided into three tiers by willingness to pay:</p>
+        <ul>
+          <li><strong>High-value</strong> &mdash; critical loads (hospitals, data centres). High VoLL, high shift cost.</li>
+          <li><strong>Mid-value</strong> &mdash; important but flexible (commercial heating). Moderate VoLL.</li>
+          <li><strong>Low-value</strong> &mdash; deferrable loads (EV charging, water heating). Low VoLL.</li>
+        </ul>
+        <table>
+          <tr><th>Parameter</th><th>Meaning</th></tr>
+          <tr><td>Quantity (GW)</td><td>GW of this tier present during the block</td></tr>
+          <tr><td>VoLL</td><td>Max price this demand will pay; above this it is curtailed</td></tr>
+          <tr><td>Shift Cost</td><td>Cost to move demand to a later, cheaper block (downward only)</td></tr>
+        </table>
+        <p><strong>Expandable demand</strong> activates when prices fall below its value &mdash; representing new consumption attracted by cheap power.</p>
+      </div></span>
+    </h2>
     <div class="tabs" id="demand-tabs"></div>
     <div id="demand-panels"></div>
   </div>
 
   <!-- Supply -->
   <div class="card">
-    <h2><span class="dot" style="background:var(--success)"></span> Supply-Side Technology Costs</h2>
+    <h2><span class="dot" style="background:var(--success)"></span> Supply-Side Technology Costs
+      <span class="info-wrap"><span class="info-btn">i</span><div class="info-tip">
+        <h4>Supply Technologies</h4>
+        <p>The model determines how much of each technology to build. No capacities are pre-set.</p>
+        <ul>
+          <li><strong>Renewables</strong> &mdash; zero fuel cost; output limited by availability profile. Input: annualised capital cost.</li>
+          <li><strong>Gas Peaker</strong> &mdash; flexible, burns gas. Inputs: capital cost, variable cost, carbon price, emission factor.</li>
+          <li><strong>Storage</strong> &mdash; specified via CapEx: duration (h), connection cost (&pound;/MW), cell cost (&pound;/MWh), asset life. Annualised internally. No fuel cost &mdash; implied cycling cost is an output.</li>
+          <li><strong>T&amp;D</strong> &mdash; network capacity, sized to peak generation. Input: annualised capacity cost.</li>
+        </ul>
+        <p>Storage conversion: power cost = connection / 1000 / life; energy cost = cell cost / 1000 / life, amortised over cycles/year.</p>
+      </div></span>
+    </h2>
     <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">The model determines optimal capacities. No fixed capacities are pre-set.</p>
     <div class="tabs" id="supply-tabs">
       <button class="tab-btn active" onclick="switchSupplyTab(this,'supply-renewables')">Renewables</button>
