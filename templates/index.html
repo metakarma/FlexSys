@@ -90,6 +90,17 @@ input[type="number"]:focus { outline: none; border-color: var(--accent); box-sha
 .btn-primary.loading .spinner { display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+#btn-solve {
+  position: fixed; top: 16px; right: 16px; z-index: 1001;
+  margin-top: 0; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+#btn-solve:hover { background: var(--accent-dark); }
+@media (max-width: 768px) {
+  #btn-solve {
+    top: 12px; right: 12px; padding: 10px 16px; font-size: 13px;
+  }
+}
+
 #results { display: none; }
 .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
 .metric-card {
@@ -860,6 +871,12 @@ async function runOptimise() {
 }
 
 function fmtCur(n) { return getCur() + Number(n).toLocaleString(undefined, {maximumFractionDigits:0}); }
+function fmtCurM(n) {
+  return getCur() + (Number(n) / 1_000_000).toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1
+  }) + "m";
+}
 function fmtGW(n) { return n.toFixed(1) + " GW"; }
 
 const BLOCK_COLOR_MAP = {
@@ -985,10 +1002,10 @@ function renderResults(data, inputs) {
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.storage_power)}</div><div class="label">Storage Power</div></div>`;
   m += `<div class="metric-card"><div class="value">${caps.storage_energy.toFixed(0)} GWh</div><div class="label">Storage Energy</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.td)}</div><div class="label">T&amp;D Capacity</div></div>`;
-  m += `<div class="metric-card"><div class="value">${fmtCur(data.net_welfare)}</div><div class="label">Net Welfare</div></div>`;
-  m += `<div class="metric-card"><div class="value">${fmtCur(data.total_consumer_value)}</div><div class="label">Consumer Value</div></div>`;
-  m += `<div class="metric-card"><div class="value" style="color:var(--danger)">${fmtCur(data.total_variable_cost)}</div><div class="label">Variable Cost</div></div>`;
-  m += `<div class="metric-card"><div class="value" style="color:var(--danger)">${fmtCur(data.total_capital_cost)}</div><div class="label">Capital Cost</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtCurM(data.net_welfare)}</div><div class="label">Net Welfare</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtCurM(data.total_consumer_value)}</div><div class="label">Consumer Value</div></div>`;
+  m += `<div class="metric-card"><div class="value" style="color:var(--danger)">${fmtCurM(data.total_variable_cost)}</div><div class="label">Variable Cost</div></div>`;
+  m += `<div class="metric-card"><div class="value" style="color:var(--danger)">${fmtCurM(data.total_capital_cost)}</div><div class="label">Capital Cost</div></div>`;
   document.getElementById("summary-metrics").innerHTML = m;
 
   // Plots
