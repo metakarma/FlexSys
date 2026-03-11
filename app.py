@@ -228,7 +228,7 @@ def generate_plots(inputs: dict, results: dict, cur: str = "$") -> dict:
     return plots
 
 
-GEN_COLORS = {"ZVC": "#10B981", "Gas": "#EF4444", "Storage": "#3B82F6"}
+GEN_COLORS = {"Renewables": "#10B981", "Gas": "#EF4444", "Storage": "#3B82F6"}
 
 
 INPUT_TIER_COLORS = {"High": "#4C1D95", "Mid": "#7C3AED", "Low": "#C4B5FD"}
@@ -320,7 +320,7 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> str:
         gen = _gen_total(sb)
 
         stack = [
-            ("ZVC", sup["zvc"]),
+            ("Renewables", sup["zvc"]),
             ("Gas", sup["gas"]),
             ("Storage", sup["storage_discharge"]),
         ]
@@ -362,7 +362,7 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> str:
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
 
     legend_handles = [Patch(fc=GEN_COLORS[t], ec="white", label=t)
-                      for t in ("ZVC", "Gas", "Storage")]
+                      for t in ("Renewables", "Gas", "Storage")]
     if has_curtailed:
         legend_handles.append(
             Patch(facecolor="none", edgecolor="#6B7280", hatch="///",
@@ -451,7 +451,7 @@ def _plot_capacity(results: dict, cur: str = "$") -> str:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
 
-    techs = ["ZVC", "Gas", "Storage"]
+    techs = ["Renewables", "Gas", "Storage"]
     cap_vals = [caps["zvc"], caps["gas"], caps["storage_power"]]
     colors = ["#10B981", "#EF4444", "#3B82F6"]
 
@@ -463,7 +463,7 @@ def _plot_capacity(results: dict, cur: str = "$") -> str:
     ax1.set_ylabel("Capacity (GW)")
     ax1.set_title("Optimal Power Capacity", fontsize=12, fontweight="bold")
 
-    cost_labels = ["ZVC", "Gas", "Storage"]
+    cost_labels = ["Renewables", "Gas", "Storage"]
     cost_vals = [costs["zvc"], costs["gas"],
                  costs["storage_power"] + costs["storage_energy"]]
     nonzero = [(l, v, c) for l, v, c in zip(cost_labels, cost_vals, colors) if v > 0]
@@ -529,7 +529,7 @@ def _plot_dispatch(inputs: dict, results: dict, cur: str = "$") -> str:
                 demand_labels.append("Sto. Charge")
                 demand_vals.append(sb["supply"]["storage_charge"])
 
-            supply_labels = ["ZVC", "Gas", "Storage"]
+            supply_labels = ["Renewables", "Gas", "Storage"]
             supply_vals = [
                 sb["supply"]["zvc"],
                 sb["supply"]["gas"],
@@ -573,7 +573,7 @@ DEMAND_COLOR_MAP = {
     "High": "#6366F1", "Mid": "#8B5CF6", "Low": "#A78BFA",
     "Shifted In": "#F59E0B", "Expandable": "#C4B5FD", "Sto. Charge": "#3B82F6",
 }
-SUPPLY_COLOR_MAP = {"ZVC": "#10B981", "Gas": "#EF4444", "Storage": "#3B82F6"}
+SUPPLY_COLOR_MAP = {"Renewables": "#10B981", "Gas": "#EF4444", "Storage": "#3B82F6"}
 
 
 def _stacked_bar(ax, x_pos, vals, labels, colors, fmt=".1f"):
@@ -627,7 +627,7 @@ def _plot_dispatch_gwh(inputs: dict, results: dict, cur: str = "$") -> str:
                 demand_labels.append("Sto. Charge")
                 demand_vals.append(sb["supply"]["storage_charge"] * h)
 
-            supply_labels = ["ZVC", "Gas", "Storage"]
+            supply_labels = ["Renewables", "Gas", "Storage"]
             supply_vals = [
                 sb["supply"]["zvc"] * h,
                 sb["supply"]["gas"] * h,

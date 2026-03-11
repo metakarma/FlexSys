@@ -34,23 +34,23 @@ from typing import Any
 def default_inputs() -> dict[str, Any]:
     blocks = ["Winter Peak", "Shoulder", "Low Demand"]
     hours = {"Winter Peak": 300, "Shoulder": 3000, "Low Demand": 5460}
-    base_load = {"Winter Peak": 60, "Shoulder": 40, "Low Demand": 20}
+    base_load = {"Winter Peak": 45, "Shoulder": 35, "Low Demand": 20}
 
     demand_tiers = {
         "Winter Peak": [
-            {"name": "High", "quantity": 10, "voll": 15000, "shift_cost": 1000},
-            {"name": "Mid",  "quantity": 20, "voll": 800,   "shift_cost": 500},
-            {"name": "Low",  "quantity": 15, "voll": 100,   "shift_cost": 50},
+            {"name": "High", "quantity": 4.5,  "voll": 15000, "shift_cost": 1000},
+            {"name": "Mid",  "quantity": 27,   "voll": 800,   "shift_cost": 500},
+            {"name": "Low",  "quantity": 13.5, "voll": 100,   "shift_cost": 50},
         ],
         "Shoulder": [
-            {"name": "High", "quantity": 8,  "voll": 12000, "shift_cost": 800},
-            {"name": "Mid",  "quantity": 18, "voll": 600,   "shift_cost": 40},
-            {"name": "Low",  "quantity": 10, "voll": 120,   "shift_cost": 8},
+            {"name": "High", "quantity": 3.5,  "voll": 12000, "shift_cost": 800},
+            {"name": "Mid",  "quantity": 21,   "voll": 600,   "shift_cost": 40},
+            {"name": "Low",  "quantity": 10.5, "voll": 120,   "shift_cost": 8},
         ],
         "Low Demand": [
-            {"name": "High", "quantity": 5,  "voll": 10000, "shift_cost": 0},
-            {"name": "Mid",  "quantity": 10, "voll": 400,   "shift_cost": 0},
-            {"name": "Low",  "quantity": 5,  "voll": 100,   "shift_cost": 0},
+            {"name": "High", "quantity": 2,  "voll": 10000, "shift_cost": 0},
+            {"name": "Mid",  "quantity": 12, "voll": 400,   "shift_cost": 0},
+            {"name": "Low",  "quantity": 6,  "voll": 100,   "shift_cost": 0},
         ],
     }
 

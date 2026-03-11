@@ -281,7 +281,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
   <!-- ZVC Profile -->
   <div class="card">
-    <h2><span class="dot" style="background:var(--success)"></span> ZVC Availability Profile (Sub-Blocks)</h2>
+    <h2><span class="dot" style="background:var(--success)"></span> Renewables Availability Profile (Sub-Blocks)</h2>
     <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">Each block is split into Low Renewables and High Renewables sub-blocks to capture intermittency. % Hours must sum to 100 per block.</p>
     <div class="grid-3" id="zvc-profile-inputs"></div>
   </div>
@@ -299,7 +299,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
     <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">The model determines optimal capacities. No fixed capacities are pre-set.</p>
     <div class="grid-3">
       <div>
-        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Zero-Variable-Cost (ZVC)</h4>
+        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Renewables (Zero Variable Cost)</h4>
         <div class="field-group">
           <label>Capital Cost (<span class="cur">£</span>/kW/year)</label>
           <input type="number" id="zvc_capital_cost" step="any"/>
@@ -700,7 +700,7 @@ function renderResults(data, inputs) {
   });
   const avgPrice = totalGWh > 0 ? weightedPrice / totalGWh : 0;
   m += `<div class="metric-card"><div class="value" style="font-size:17px;color:var(--success)">${fmtCur(avgPrice)}/MWh</div><div class="label">Load-Weighted Avg Price</div></div>`;
-  m += `<div class="metric-card"><div class="value">${fmtGW(caps.zvc)}</div><div class="label">ZVC Capacity</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtGW(caps.zvc)}</div><div class="label">Renewables Capacity</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.gas)}</div><div class="label">Gas Capacity</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.storage_power)}</div><div class="label">Storage Power</div></div>`;
   m += `<div class="metric-card"><div class="value">${caps.storage_energy.toFixed(0)} GWh</div><div class="label">Storage Energy</div></div>`;
@@ -750,7 +750,7 @@ function renderResults(data, inputs) {
       <div class="metric-card"><div class="value" style="font-size:16px">${fmtCur(Math.abs(se.implied_cycling_cost))}/MWh</div><div class="label">Implied Cycling Cost</div></div>
     </div>`;
   } else {
-    seHtml = `<p style="font-size:13px;color:var(--muted);margin-bottom:12px;">No storage capacity built. Adjust storage costs or ZVC profile to explore storage investment.</p>`;
+    seHtml = `<p style="font-size:13px;color:var(--muted);margin-bottom:12px;">No storage capacity built. Adjust storage costs or Renewables profile to explore storage investment.</p>`;
   }
   document.getElementById("storage-economics").innerHTML = seHtml;
 
@@ -778,7 +778,7 @@ function renderResults(data, inputs) {
 
     t += `<table><thead><tr><th>Supply</th><th>Dispatch (GW)</th><th>Available (GW)</th></tr></thead><tbody>`;
     const zvcAvail = (caps.zvc * sb.zvc_availability / 100).toFixed(2);
-    t += `<tr><td>ZVC</td><td>${sb.supply.zvc.toFixed(2)}</td><td>${zvcAvail}</td></tr>`;
+    t += `<tr><td>Renewables</td><td>${sb.supply.zvc.toFixed(2)}</td><td>${zvcAvail}</td></tr>`;
     t += `<tr><td>Gas Peaker</td><td>${sb.supply.gas.toFixed(2)}</td><td>${caps.gas.toFixed(2)}</td></tr>`;
     t += `<tr><td>Storage Discharge</td><td>${sb.supply.storage_discharge.toFixed(2)}</td><td>${caps.storage_power.toFixed(2)}</td></tr>`;
     t += `<tr><td>Storage Charge</td><td>${sb.supply.storage_charge.toFixed(2)}</td><td></td></tr>`;
