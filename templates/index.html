@@ -378,10 +378,10 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
         <ul>
           <li><strong>Renewables</strong> &mdash; zero fuel cost; output limited by availability profile. Input: annualised capital cost.</li>
           <li><strong>Gas Peaker</strong> &mdash; flexible, burns gas. Inputs: capital cost, variable cost, carbon price, emission factor.</li>
-          <li><strong>Storage</strong> &mdash; specified via CapEx: duration (h), connection cost (&pound;/MW), cell cost (&pound;/MWh), asset life. Annualised internally. No fuel cost &mdash; implied cycling cost is an output.</li>
+          <li><strong>Storage</strong> &mdash; specified via CapEx: duration (h), connection cost (&pound;/MW), cell cost (&pound;/MWh), asset life, discount rate (%). Annualised using capital recovery factor. No fuel cost &mdash; implied cycling cost is an output.</li>
           <li><strong>T&amp;D</strong> &mdash; network capacity, sized to peak generation. Input: annualised capacity cost.</li>
         </ul>
-        <p>Storage conversion: power cost = connection / 1000 / life; energy cost = cell cost / 1000 / life, amortised over cycles/year.</p>
+        <p>Storage conversion: power cost = (connection/1000)×CRF; energy cost = (cell cost/1000)×CRF, amortised over cycles/year. CRF uses discount rate and asset life.</p>
       </div></span>
     </h2>
     <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">The model determines optimal capacities. No fixed capacities are pre-set.</p>
@@ -442,6 +442,10 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
           <input type="number" id="storage_life" step="1" min="1"/>
         </div>
         <div class="field-group">
+          <label>Discount Rate (%)</label>
+          <input type="number" id="storage_discount_rate" step="any" min="0"/>
+        </div>
+        <div class="field-group">
           <label>Cycles / Year</label>
           <input type="number" id="storage_cycles" step="1" min="1"/>
         </div>
@@ -450,7 +454,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
           <input type="number" id="storage_efficiency" step="any" min="1" max="100"/>
         </div>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin-top:8px;">CapEx is annualised internally: power cost = connection / 1000 / life; energy cost = cell cost / 1000 / life, then amortised over cycles.</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">CapEx is annualised using the capital recovery factor (CRF) with the discount rate: power cost = (connection/1000)×CRF; energy cost = (cell cost/1000)×CRF, then amortised over cycles.</p>
     </div>
 
     <div class="supply-panel" id="supply-td">
@@ -699,6 +703,7 @@ function buildSupply() {
   document.getElementById("storage_connection_cost").value = s.storage_connection_cost;
   document.getElementById("storage_cell_cost").value = s.storage_cell_cost;
   document.getElementById("storage_life").value = s.storage_life;
+  document.getElementById("storage_discount_rate").value = s.storage_discount_rate ?? 5;
   document.getElementById("storage_cycles").value = s.storage_cycles;
   document.getElementById("storage_efficiency").value = s.storage_efficiency;
   document.getElementById("td_cost").value = s.td_cost || 0;
@@ -767,6 +772,7 @@ function gatherInputs() {
       storage_connection_cost: +document.getElementById("storage_connection_cost").value,
       storage_cell_cost: +document.getElementById("storage_cell_cost").value,
       storage_life: +document.getElementById("storage_life").value,
+      storage_discount_rate: +document.getElementById("storage_discount_rate").value,
       storage_cycles: +document.getElementById("storage_cycles").value,
       storage_efficiency: +document.getElementById("storage_efficiency").value,
       td_cost: +document.getElementById("td_cost").value,

@@ -46,17 +46,18 @@ The model determines the **welfare-maximising capacity mix**. No capacities are 
 |-----------|----------------|
 | **Renewables** (wind, solar, nuclear) | Annualised capital cost: £450/kW/year. Zero variable cost. |
 | **Gas peaker** | Capital: £40/kW/year. Variable: £80/MWh + optional carbon price. |
-| **Battery storage** | Duration: 4h. Connection: £150,000/MW. Cells: £150,000/MWh. Life: 15 years. 365 cycles/year. 95% round-trip efficiency. |
+| **Battery storage** | Duration: 4h. Connection: £150,000/MW. Cells: £150,000/MWh. Life: 15 years. Discount rate: 5%. 365 cycles/year. 95% round-trip efficiency. |
 | **Transmission & Distribution** | Capacity cost: £10/kW/year. Sized to peak system generation. |
 
 ### Storage
 
-Storage inputs are specified as physical CapEx parameters: **duration** (hours), **connection cost** (£/MW for inverter/grid connection), **cell cost** (£/MWh for battery cells), and **asset life** (years). The model annualises these internally:
+Storage inputs are specified as physical CapEx parameters: **duration** (hours), **connection cost** (£/MW for inverter/grid connection), **cell cost** (£/MWh for battery cells), **asset life** (years), and **discount rate** (%). The model annualises using the <strong>capital recovery factor</strong> (CRF):
 
-- Power cost (£/kW/yr) = connection cost / 1000 / life
-- Energy cost (£/kWh/yr) = cell cost / 1000 / life
+- CRF = r(1+r)^n / ((1+r)^n − 1), where r = discount rate (decimal), n = asset life
+- Power cost (£/kW/yr) = (connection cost / 1000) × CRF
+- Energy cost (£/kWh/yr) = (cell cost / 1000) × CRF
 
-The energy cost is further amortised over the number of **cycles per year**. A duration constraint links energy and power capacity: energy (GWh) = power (GW) × duration (h).
+The energy cost is further amortised over the number of **cycles per year**. When discount rate is zero, CRF = 1/n (straight-line). A duration constraint links energy and power capacity: energy (GWh) = power (GW) × duration (h).
 
 Round-trip efficiency (default 95%) creates an implicit cycling cost that depends on charge/discharge prices — this is an **output**, not an input.
 

@@ -85,6 +85,7 @@ def default_inputs() -> dict[str, Any]:
         "storage_connection_cost": 150000,
         "storage_cell_cost": 150000,
         "storage_life": 15,
+        "storage_discount_rate": 5,  # % per year, used for capital recovery factor
         "storage_cycles": 365,
         "storage_efficiency": 95,
         "td_cost": 10,
@@ -140,18 +141,25 @@ def _solve_core(inputs: dict[str, Any], *,
 
     # Storage cost derivation from user-facing CapEx inputs
     # Connection cost (£/MW) and cell cost (£/MWh) are one-off CapEx.
-    # Annualise by dividing by asset life, convert to £/kW/yr and £/kWh/yr.
+    # Annualise using capital recovery factor (CRF) with discount rate.
     sto_life = max(supply.get("storage_life", 15), 1)
     annual_cycles = max(supply.get("storage_cycles", 365), 1)
     sto_duration = max(supply.get("storage_duration", 4), 0.1)
+    r = max(supply.get("storage_discount_rate", 5), 0) / 100.0  # decimal
+
+    # CRF = r(1+r)^n / ((1+r)^n - 1). When r→0, CRF = 1/n.
+    if r < 1e-9:
+        crf = 1.0 / sto_life
+    else:
+        crf = r * (1 + r) ** sto_life / ((1 + r) ** sto_life - 1)
 
     if "storage_connection_cost" in supply:
-        storage_power_cost = supply["storage_connection_cost"] / 1000 / sto_life
+        storage_power_cost = (supply["storage_connection_cost"] / 1000) * crf
     else:
         storage_power_cost = supply.get("storage_power_cost", 10)
 
     if "storage_cell_cost" in supply:
-        storage_energy_cost = supply["storage_cell_cost"] / 1000 / sto_life
+        storage_energy_cost = (supply["storage_cell_cost"] / 1000) * crf
     else:
         storage_energy_cost = supply.get("storage_energy_cost", 10)
 

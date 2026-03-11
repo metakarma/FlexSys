@@ -275,17 +275,20 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
   <li><strong>Duration</strong> (hours) &mdash; how many hours the battery can discharge at full power (e.g. 4h). This fixes the ratio of energy to power capacity.</li>
   <li><strong>Connection cost</strong> (&pound;/MW) &mdash; the one-off capital cost of the inverter and grid connection</li>
   <li><strong>Cell cost</strong> (&pound;/MWh) &mdash; the one-off capital cost of the battery cells</li>
-  <li><strong>Asset life</strong> (years) &mdash; used to annualise the CapEx into &pound;/kW/year and &pound;/kWh/year</li>
+  <li><strong>Asset life</strong> (years) &mdash; economic life of the asset</li>
+  <li><strong>Discount rate</strong> (%) &mdash; used in the capital recovery factor to annualise CapEx. Higher rates increase the annual cost (time value of money). Default 5%.</li>
   <li><strong>Cycles / year</strong> &mdash; how often the battery is assumed to cycle. The annualised cell cost is spread over this many cycles, so a battery cycling daily (365) has a much lower effective cost per MWh than one cycling weekly (52).</li>
   <li><strong>Round-trip efficiency</strong> (%) &mdash; default 95%. For every MWh charged, only 0.95 MWh is available to discharge. The 5% is lost as heat.</li>
 </ul>
 
-<p>The model converts these internally:</p>
+<p>The model converts these internally using the <strong>capital recovery factor</strong> (CRF):</p>
 <ul>
-  <li>Power cost (&pound;/kW/yr) = connection cost (&pound;/MW) &divide; 1000 &divide; life (years)</li>
-  <li>Energy cost (&pound;/kWh/yr) = cell cost (&pound;/MWh) &divide; 1000 &divide; life (years)</li>
+  <li>CRF = r(1+r)<sup>n</sup> &divide; ((1+r)<sup>n</sup> &minus; 1), where r = discount rate (decimal), n = asset life</li>
+  <li>Power cost (&pound;/kW/yr) = (connection cost &divide; 1000) &times; CRF</li>
+  <li>Energy cost (&pound;/kWh/yr) = (cell cost &divide; 1000) &times; CRF</li>
   <li>Effective energy cost = energy cost &divide; cycles per year</li>
 </ul>
+<p>When the discount rate is zero, CRF = 1/n (straight-line). For r &gt; 0, CRF &gt; 1/n, so annual costs reflect the time value of money.</p>
 
 <p>A <strong>duration constraint</strong> ensures that energy capacity (GWh) = power capacity (GW) &times; duration (h), so the optimiser determines how much storage to build as a single decision, with the duration as a design parameter.</p>
 
