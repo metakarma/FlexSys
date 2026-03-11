@@ -1,0 +1,15 @@
+---
+description: Update docs and push to GitHub when making changes
+alwaysApply: true
+---
+
+# Peaky Flexers — Docs & GitHub
+
+When making changes to this project:
+
+1. **Update documentation when relevant**
+   - `templates/guide.html` — pedagogic user guide; update when inputs, outputs, or model logic change
+   - `README.md` — project overview; update when features, defaults, or structure change
+
+2. **Push to GitHub**
+   - After committing changes, run `git push origin main` to sync with the remote repository
