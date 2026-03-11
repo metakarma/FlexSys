@@ -49,6 +49,8 @@ header p { color: #94a3b8; margin-top: 6px; font-size: 15px; }
 .tab-btn.active { background: var(--surface); color: var(--accent); border-bottom-color: var(--surface); }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+.supply-panel { display: none; }
+.supply-panel.active { display: block; }
 
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
@@ -297,16 +299,25 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
   <div class="card">
     <h2><span class="dot" style="background:var(--success)"></span> Supply-Side Technology Costs</h2>
     <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">The model determines optimal capacities. No fixed capacities are pre-set.</p>
-    <div class="grid-3">
-      <div>
-        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Renewables (Zero Variable Cost)</h4>
+    <div class="tabs" id="supply-tabs">
+      <button class="tab-btn active" onclick="switchSupplyTab(this,'supply-renewables')">Renewables</button>
+      <button class="tab-btn" onclick="switchSupplyTab(this,'supply-gas')">Gas Peaker</button>
+      <button class="tab-btn" onclick="switchSupplyTab(this,'supply-storage')">Storage</button>
+      <button class="tab-btn" onclick="switchSupplyTab(this,'supply-td')">T&amp;D</button>
+    </div>
+
+    <div class="supply-panel active" id="supply-renewables">
+      <div class="grid-2">
         <div class="field-group">
           <label>Capital Cost (<span class="cur">£</span>/kW/year)</label>
           <input type="number" id="zvc_capital_cost" step="any"/>
         </div>
       </div>
-      <div>
-        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Gas Peaker</h4>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Zero variable cost generation (wind, solar, nuclear). Output depends on the Renewables Availability Profile above.</p>
+    </div>
+
+    <div class="supply-panel" id="supply-gas">
+      <div class="grid-2">
         <div class="field-group">
           <label>Capital Cost (<span class="cur">£</span>/kW/year)</label>
           <input type="number" id="gas_capital_cost" step="any"/>
@@ -324,8 +335,10 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
           <input type="number" id="gas_emission_factor" step="any" min="0"/>
         </div>
       </div>
-      <div>
-        <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Storage</h4>
+    </div>
+
+    <div class="supply-panel" id="supply-storage">
+      <div class="grid-2">
         <div class="field-group">
           <label>Duration (hours)</label>
           <input type="number" id="storage_duration" step="any" min="0.1"/>
@@ -351,15 +364,17 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
           <input type="number" id="storage_efficiency" step="any" min="1" max="100"/>
         </div>
       </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">CapEx is annualised internally: power cost = connection / 1000 / life; energy cost = cell cost / 1000 / life, then amortised over cycles.</p>
     </div>
-    <div style="margin-top:12px;">
-      <h4 style="font-size:14px;margin-bottom:10px;font-weight:600;">Transmission &amp; Distribution</h4>
-      <div style="max-width:280px;">
+
+    <div class="supply-panel" id="supply-td">
+      <div class="grid-2">
         <div class="field-group">
           <label>T&amp;D Capacity Cost (<span class="cur">£</span>/kW/year)</label>
           <input type="number" id="td_cost" step="any" min="0"/>
         </div>
       </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Sized to peak system generation. The constraint binds at the sub-block with the highest total dispatched power.</p>
     </div>
   </div>
 
@@ -604,10 +619,19 @@ function buildSupply() {
 }
 
 function switchTab(btn, block) {
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  const parent = btn.parentElement;
+  parent.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  parent.parentElement.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
   btn.classList.add("active");
   document.getElementById("panel-" + block).classList.add("active");
+}
+
+function switchSupplyTab(btn, panelId) {
+  const parent = btn.parentElement;
+  parent.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  parent.parentElement.querySelectorAll(".supply-panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById(panelId).classList.add("active");
 }
 
 function gatherInputs() {
