@@ -17,3 +17,5 @@ Notes:
 - `docker compose build` alone is not enough to deploy a new version.
 - The `up -d --build` step is required so the running service is recreated from the new image.
 - Do not run these deployment commands proactively; wait for an explicit user request.
+- Preserve the server-local Docker Compose port binding `127.0.0.1:8180:8080` when merging deployment changes.
+- If `git pull` is blocked by a local `docker-compose.yml` change on the server, use a safe stash/pull/reapply flow rather than overwriting the server-local binding.

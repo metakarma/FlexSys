@@ -248,6 +248,7 @@ def _build_system_prompt(current_inputs, current_results):
         "- Reference specific variables, constraints, and line numbers from the model code when relevant.",
         "- Use the current inputs and results to give specific, quantitative answers.",
         "- If the user asks what would happen with different parameters, explain the economic logic.",
+        "- If you refer to 'ZVC' or any ZVC variable, spell it out as 'Zero Variable Cost'.",
         "- Be concise but thorough. Use markdown formatting.",
     ]
 

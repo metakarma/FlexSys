@@ -101,7 +101,7 @@ This keeps the optimisation and reported totals consistent with the input units 
 An expandable chat panel (toggle via the **AI Chat** button, bottom-right) lets users interrogate model results conversationally using Anthropic's Claude. Features:
 
 - **Model selector** — defaults to Claude Opus 4.6.
-- **API key input** — your Anthropic key is stored locally in the browser and never sent to the server beyond proxying requests.
+- **API key input** — a Claude API key is required; users can create one at [Claude API Keys](https://platform.claude.com/settings/keys). The key is stored locally in the browser and never sent to the server beyond proxying requests.
 - **Full model context** — every message is sent alongside the complete model source code (`model.py`), the current input parameters, and the latest optimisation results, so the AI can reason about your specific scenario.
 - **Markdown & LaTeX rendering** — responses are formatted with Markdown (via `marked.js`) and mathematical equations are rendered with KaTeX.
 - **Clear Chat** button to reset the conversation history.
