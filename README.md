@@ -6,6 +6,10 @@ A currency selector (£/$/€) at the top of the UI updates all labels and plot 
 
 ## Quick Start
 
+### Optional Beta Access Gate
+
+For a simple beta password layer, set the environment variable `PEAKY_BETA_PASSWORD`. When set, the model page is greyed out until the correct password is entered, and optimise/chat endpoints remain blocked until access is granted. The provided `docker-compose.yml` passes this environment variable through into the container.
+
 ### With Docker
 
 ```bash

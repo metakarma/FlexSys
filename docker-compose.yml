@@ -5,4 +5,6 @@ services:
       - "8180:8080"
     environment:
       - FLASK_ENV=production
+      - PEAKY_BETA_PASSWORD=${PEAKY_BETA_PASSWORD:-}
+      - PEAKY_SECRET_KEY=${PEAKY_SECRET_KEY:-}
     restart: unless-stopped

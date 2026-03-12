@@ -7,6 +7,7 @@ from __future__ import annotations
 import io
 import base64
 import json
+import os
 import traceback
 import datetime
 import threading
@@ -17,7 +18,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import seaborn as sns
 import numpy as np
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 from pathlib import Path
 
@@ -25,8 +26,13 @@ from model import default_inputs, solve
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
+app.secret_key = os.environ.get(
+    "PEAKY_SECRET_KEY",
+    os.environ.get("SECRET_KEY", "change-this-peaky-flexers-secret"),
+)
 
 _MODEL_SOURCE = Path(__file__).with_name("model.py").read_text(encoding="utf-8")
+CONTACT_EMAIL = "tony@metakarma.org"
 
 
 @app.errorhandler(413)
@@ -44,19 +50,49 @@ SUB_ALPHA = {0: 0.55, 1: 0.90}  # lo sub-block darker / hi sub-block lighter
 # Routes
 # ---------------------------------------------------------------------------
 
+
+def _beta_password() -> str:
+    return os.environ.get("PEAKY_BETA_PASSWORD", "").strip()
+
+
+def _beta_enabled() -> bool:
+    return bool(_beta_password())
+
+
+def _has_beta_access() -> bool:
+    return (not _beta_enabled()) or bool(session.get("beta_access"))
+
+
+def _beta_api_denied():
+    return jsonify({
+        "error": True,
+        "status": "Beta access required",
+        "reply": "Beta access required. Please enter the beta password first.",
+    }), 403
+
 @app.route("/")
 def index():
     defaults = default_inputs()
-    return render_template("index.html", defaults=json.dumps(defaults))
+    return render_template(
+        "index.html",
+        defaults=json.dumps(defaults),
+        beta_required=_beta_enabled(),
+        beta_authorized=_has_beta_access(),
+        contact_email=CONTACT_EMAIL,
+    )
 
 
 @app.route("/guide")
 def guide():
+    if not _has_beta_access():
+        return redirect(url_for("index"))
     return render_template("guide.html")
 
 
 @app.route("/optimise", methods=["POST"])
 def optimise():
+    if not _has_beta_access():
+        return _beta_api_denied()
     try:
         inputs = request.get_json(force=True)
         results = solve(inputs)
@@ -71,6 +107,23 @@ def optimise():
     except Exception as exc:
         traceback.print_exc()
         return jsonify({"error": True, "status": str(exc)}), 500
+
+
+@app.route("/beta_access", methods=["POST"])
+def beta_access():
+    if not _beta_enabled():
+        session["beta_access"] = True
+        return jsonify({"error": False, "authorised": True})
+
+    data = request.get_json(force=True) or {}
+    password = (data.get("password") or "").strip()
+    if password and password == _beta_password():
+        session["beta_access"] = True
+        return jsonify({"error": False, "authorised": True})
+    return jsonify({
+        "error": True,
+        "reply": "Incorrect password. If you have not yet been given beta access, please get in touch.",
+    }), 403
 
 
 CHAT_MODELS = {
@@ -100,6 +153,8 @@ def _log_chat(ip: str, model: str, message: str, history: list, reply: str):
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    if not _has_beta_access():
+        return _beta_api_denied()
     try:
         import anthropic
 
@@ -146,6 +201,8 @@ def chat():
 
 @app.route("/chat_models")
 def chat_models():
+    if not _has_beta_access():
+        return _beta_api_denied()
     return jsonify({"models": CHAT_MODELS, "default": DEFAULT_CHAT_MODEL})
 
 
