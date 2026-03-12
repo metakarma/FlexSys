@@ -45,8 +45,8 @@ The model determines the **welfare-maximising capacity mix**. No capacities are 
 | Technology | Cost Parameters |
 |-----------|----------------|
 | **Renewables** (wind, solar, nuclear) | Annualised capital cost: £450/kW/year. Zero variable cost. |
-| **Gas peaker** | Capital: £40/kW/year. Variable: £80/MWh + optional carbon price. |
-| **Battery storage** | Duration: 4h. Connection: £150,000/MW. Cells: £150,000/MWh. Life: 15 years. Discount rate: 5%. 365 cycles/year. 95% round-trip efficiency. |
+| **Gas peaker** | Capital: £40/kW/year. Variable: £80/MWh + carbon price (default £50/tCO₂). |
+| **Battery storage** | Duration: 4h. Connection: £150,000/MW. Cells: £150,000/MWh. Life: 15 years. Discount rate: 10%. 365 cycles/year. 95% round-trip efficiency. |
 | **Transmission & Distribution** | Capacity cost: £10/kW/year. Sized to peak system generation. |
 
 ### Storage
@@ -105,6 +105,7 @@ An expandable chat panel (toggle via the **AI Chat** button, bottom-right) lets 
 - **Download buttons** on all output charts (PNG) and tables (CSV).
 - **Hover pop-outs** on the generation duration curve and price duration curve to inspect each sub-block without cluttering the chart.
 - **Summary money metrics in millions** (for example `£m`) for cleaner headline reporting.
+- **Public comments section** at the bottom of the page with links for GitHub feature requests and direct email contact.
 
 ## User Guide
 

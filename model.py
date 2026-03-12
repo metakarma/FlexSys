@@ -79,13 +79,13 @@ def default_inputs() -> dict[str, Any]:
         "zvc_capital_cost": 450,
         "gas_capital_cost": 40,
         "gas_variable_cost": 80,
-        "carbon_price": 0,
+        "carbon_price": 50,
         "gas_emission_factor": 0.5,
         "storage_duration": 4,
         "storage_connection_cost": 150000,
         "storage_cell_cost": 150000,
         "storage_life": 15,
-        "storage_discount_rate": 5,  # % per year, used for capital recovery factor
+        "storage_discount_rate": 10,  # % per year, used for capital recovery factor
         "storage_cycles": 365,
         "storage_efficiency": 95,
         "td_cost": 10,

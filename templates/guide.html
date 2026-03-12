@@ -265,7 +265,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 <ul>
   <li><strong>Capital cost</strong> (&pound;/kW/year) &mdash; the annualised cost of building the plant</li>
   <li><strong>Variable cost</strong> (&pound;/MWh) &mdash; the fuel and O&amp;M cost of running it</li>
-  <li><strong>Carbon price</strong> (&pound;/tCO&#8322;) &mdash; a carbon tax or shadow price, multiplied by the emission factor to add to variable cost</li>
+  <li><strong>Carbon price</strong> (&pound;/tCO&#8322;) &mdash; a carbon tax or shadow price, multiplied by the emission factor to add to variable cost. Default 50.</li>
   <li><strong>Emission factor</strong> (tCO&#8322;/MWh) &mdash; carbon intensity of the gas plant</li>
 </ul>
 
@@ -276,7 +276,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
   <li><strong>Connection cost</strong> (&pound;/MW) &mdash; the one-off capital cost of the inverter and grid connection</li>
   <li><strong>Cell cost</strong> (&pound;/MWh) &mdash; the one-off capital cost of the battery cells</li>
   <li><strong>Asset life</strong> (years) &mdash; economic life of the asset</li>
-  <li><strong>Discount rate</strong> (%) &mdash; used in the capital recovery factor to annualise CapEx. Higher rates increase the annual cost (time value of money). Default 5%.</li>
+  <li><strong>Discount rate</strong> (%) &mdash; used in the capital recovery factor to annualise CapEx. Higher rates increase the annual cost (time value of money). Default 10%.</li>
   <li><strong>Cycles / year</strong> &mdash; how often the battery is assumed to cycle. The annualised cell cost is spread over this many cycles, so a battery cycling daily (365) has a much lower effective cost per MWh than one cycling weekly (52).</li>
   <li><strong>Round-trip efficiency</strong> (%) &mdash; default 95%. For every MWh charged, only 0.95 MWh is available to discharge. The 5% is lost as heat.</li>
 </ul>
