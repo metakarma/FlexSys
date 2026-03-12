@@ -1279,6 +1279,14 @@ async function submitBetaAccess() {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({password}),
     });
+    const contentType = resp.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await resp.text();
+      error.textContent = `Could not verify beta access: Server error (${resp.status}).`;
+      if (text) console.error("Non-JSON beta access response:", text.substring(0, 300));
+      error.style.display = "block";
+      return;
+    }
     const data = await resp.json();
     if (!resp.ok || data.error) {
       error.textContent = data.reply || "Incorrect password.";

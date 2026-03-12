@@ -26,9 +26,10 @@ from model import default_inputs, solve
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
-app.secret_key = os.environ.get(
-    "PEAKY_SECRET_KEY",
-    os.environ.get("SECRET_KEY", "change-this-peaky-flexers-secret"),
+app.secret_key = (
+    os.environ.get("PEAKY_SECRET_KEY")
+    or os.environ.get("SECRET_KEY")
+    or "change-this-peaky-flexers-secret"
 )
 
 _MODEL_SOURCE = Path(__file__).with_name("model.py").read_text(encoding="utf-8")
