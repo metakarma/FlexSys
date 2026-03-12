@@ -210,11 +210,42 @@ def _fig_to_base64(fig: plt.Figure) -> str:
     return f"data:image/png;base64,{b64}"
 
 
+def _duration_plot_meta(fig: plt.Figure, ax, ordered_subs: list[dict]) -> dict:
+    """Return exact axes/band positions for front-end hover overlays."""
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    ax_bbox = ax.get_window_extent(renderer)
+    tight_bbox = fig.get_tightbbox(renderer).transformed(fig.dpi_scale_trans)
+    total_hours = sum(float(sb["hours"]) for sb in ordered_subs)
+    bands = []
+    cum_hours = 0.0
+    for sb in ordered_subs:
+        h = float(sb["hours"])
+        left = (
+            (ax_bbox.x0 - tight_bbox.x0) / tight_bbox.width
+            + (ax_bbox.width / tight_bbox.width) * (cum_hours / total_hours)
+        ) if total_hours > 0 else (ax_bbox.x0 - tight_bbox.x0) / tight_bbox.width
+        width = (
+            (ax_bbox.width / tight_bbox.width) * (h / total_hours)
+        ) if total_hours > 0 else 0.0
+        bands.append({
+            "key": f"{sb['block']}::{sb['sub_idx']}",
+            "left_pct": round(left * 100, 4),
+            "width_pct": round(width * 100, 4),
+        })
+        cum_hours += h
+    return {
+        "top_pct": round(((tight_bbox.y1 - ax_bbox.y1) / tight_bbox.height) * 100, 4),
+        "height_pct": round((ax_bbox.height / tight_bbox.height) * 100, 4),
+        "bands": bands,
+    }
+
+
 def generate_plots(inputs: dict, results: dict, cur: str = "$") -> dict:
     plots = {}
     plots["input_ldc"] = _plot_input_ldc(inputs)
-    plots["ldc"] = _plot_ldc(inputs, results, cur)
-    plots["price_duration"] = _plot_price_duration(inputs, results, cur)
+    plots["ldc"], plots["ldc_meta"] = _plot_ldc(inputs, results, cur)
+    plots["price_duration"], plots["price_duration_meta"] = _plot_price_duration(inputs, results, cur)
     plots["capacity"] = _plot_capacity(results, cur)
     plots["dispatch"] = _plot_dispatch(inputs, results, cur)
     plots["dispatch_gwh"] = _plot_dispatch_gwh(inputs, results, cur)
@@ -297,7 +328,7 @@ def _plot_input_ldc(inputs: dict) -> str:
     return _fig_to_base64(fig)
 
 
-def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> str:
+def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> tuple[str, dict]:
     """LDC showing total generation stack per sub-block."""
     from matplotlib.patches import Patch
     subs = results["sub_blocks"]
@@ -362,11 +393,11 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> str:
     ax.legend(handles=legend_handles, loc="upper right", fontsize=9)
 
     sns.despine(left=True, bottom=True)
+    meta = _duration_plot_meta(fig, ax, sorted_subs)
+    return _fig_to_base64(fig), meta
 
-    return _fig_to_base64(fig)
 
-
-def _plot_price_duration(inputs: dict, results: dict, cur: str = "$") -> str:
+def _plot_price_duration(inputs: dict, results: dict, cur: str = "$") -> tuple[str, dict]:
     """Price Duration Curve — sub-blocks sorted by clearing price, high to low."""
     from matplotlib.patches import Patch
 
@@ -416,7 +447,8 @@ def _plot_price_duration(inputs: dict, results: dict, cur: str = "$") -> str:
     ax.legend(handles=legend_handles, loc="upper right", fontsize=9)
 
     sns.despine(left=True, bottom=True)
-    return _fig_to_base64(fig)
+    meta = _duration_plot_meta(fig, ax, sorted_subs)
+    return _fig_to_base64(fig), meta
 
 
 def _plot_capacity(results: dict, cur: str = "$") -> str:

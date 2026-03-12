@@ -913,30 +913,37 @@ function escHtml(v) {
   }[ch]));
 }
 
-function renderDurationHoverPlot(containerId, imgSrc, items, buildTooltipHtml) {
+function sbKey(sb) {
+  return `${sb.block}::${sb.sub_idx}`;
+}
+
+function renderDurationHoverPlot(containerId, imgSrc, items, meta, buildTooltipHtml) {
   const container = document.getElementById(containerId);
-  const totalHours = items.reduce((sum, item) => sum + (item.hours || 0), 0);
-  if (!totalHours) {
+  if (!meta || !meta.bands || !meta.bands.length) {
     container.innerHTML = `<img src="${imgSrc}" alt="Plot"/>`;
     return;
   }
 
-  let cum = 0;
-  let bands = "";
-  items.forEach((item, idx) => {
-    const left = 8 + (cum / totalHours) * 86;
-    const width = (item.hours / totalHours) * 86;
+  const itemMap = new Map(items.map(item => [sbKey(item), item]));
+  const top = Number(meta.top_pct ?? 11);
+  const height = Number(meta.height_pct ?? 76);
+  const bands = meta.bands.map((band, idx) => {
+    const item = itemMap.get(band.key);
+    if (!item) return "";
     const bg = BLOCK_COLOR_MAP[item.block] || "#3B82F6";
-    bands += `
+    const left = Number(band.left_pct);
+    const width = Number(band.width_pct);
+    const popoutLeft = left + width / 2;
+    const popoutShift = popoutLeft < 14 ? "-20%" : popoutLeft > 86 ? "-80%" : "-50%";
+    return `
       <div class="plot-hover-band" tabindex="0"
-           style="left:${left}%;width:${Math.max(width, 1.2)}%;"
+           style="left:${left}%;top:${top}%;height:${height}%;width:${Math.max(width, 1.2)}%;"
            aria-label="${escHtml(item.block)} ${escHtml(item.label)} details">
-        <div class="plot-popout" style="border-top:3px solid ${bg};">
+        <div class="plot-popout" style="border-top:3px solid ${bg};transform:translateX(${popoutShift});">
           ${buildTooltipHtml(item, idx)}
         </div>
       </div>`;
-    cum += item.hours;
-  });
+  }).join("");
 
   container.innerHTML = `
     <div class="interactive-plot">
@@ -954,7 +961,7 @@ function renderGenerationDurationPlot(data) {
     })
     .sort((a, b) => b.generation_total - a.generation_total);
 
-  renderDurationHoverPlot("plot-ldc", data.plots.ldc, items, (sb) => `
+  renderDurationHoverPlot("plot-ldc", data.plots.ldc, items, data.plots.ldc_meta, (sb) => `
     <h4>${escHtml(sb.block)}</h4>
     <div class="muted">${escHtml(sb.label)} · ${sb.hours.toFixed(0)}h</div>
     <div class="line"><strong>Generation:</strong> ${sb.generation_total.toFixed(1)} GW</div>
@@ -983,7 +990,7 @@ function renderPriceDurationPlot(data) {
     })
     .sort((a, b) => b.price - a.price);
 
-  renderDurationHoverPlot("plot-price-duration", data.plots.price_duration, items, (sb) => `
+  renderDurationHoverPlot("plot-price-duration", data.plots.price_duration, items, data.plots.price_duration_meta, (sb) => `
     <h4>${escHtml(sb.block)}</h4>
     <div class="muted">${escHtml(sb.label)} · ${sb.hours.toFixed(0)}h</div>
     <div class="line"><strong>Price:</strong> ${fmtCur(sb.price)}/MWh</div>
