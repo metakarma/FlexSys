@@ -511,6 +511,20 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>This is where you go to verify specific numbers or understand exactly what is happening in a particular sub-block. If a Sankey diagram shows an unexpected flow, the detail tables will tell you exactly which tiers and technologies are involved.</p>
 
+<!-- ---- Household ---- -->
+<h3 id="out-household">4.12 Household Bill Optimisation (Optional)</h3>
+
+<p>This optional section lets you model a single household as a <strong>price-taker</strong> in the wholesale market. After the system optimisation determines clearing prices, the household minimises its annual electricity bill given those prices.</p>
+
+<p>Enable it by expanding the &ldquo;Household Bill Optimisation&rdquo; section in the inputs and ticking the checkbox. You specify:</p>
+<ul>
+  <li><strong>Demand per block</strong> (kW) &mdash; the household&rsquo;s average load in each LDC block (e.g. 2 kW in winter, 1 kW in summer).</li>
+  <li><strong>Value of lost load</strong> (&pound;/MWh) &mdash; the price above which the household would rather curtail than consume. If the system price in a sub-block exceeds this, the household cuts demand.</li>
+  <li><strong>Home battery</strong> &mdash; capacity (kWh), power (kW), round-trip efficiency (%), and annualised cost (&pound;/year). The household can charge when prices are low and discharge when prices are high.</li>
+</ul>
+
+<p>The output shows total annual spending (energy cost and battery cost separately), average unit cost (p/kWh), and a per-sub-block breakdown of consumption, curtailment, battery activity, and spend. This is useful for understanding how retail consumers would respond to the wholesale price signals the model produces.</p>
+
 <!-- ================================================================ -->
 <h2 id="ai-chat">5. Using the AI Chat Assistant</h2>
 

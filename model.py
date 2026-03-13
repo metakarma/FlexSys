@@ -644,3 +644,164 @@ def _solve_core(inputs: dict[str, Any], *,
         "net_welfare": round(total_cv - total_vc - annual_capital["total"], 2),
     }
     return results
+
+
+# ---------------------------------------------------------------------------
+# Household optimisation (price-taker)
+# ---------------------------------------------------------------------------
+
+def default_household_inputs() -> dict[str, Any]:
+    """Default inputs for an optional household bill optimisation."""
+    return {
+        "enabled": False,
+        "demand": {
+            "Winter Peak": 2.0,
+            "Shoulder": 1.5,
+            "Low Demand": 1.0,
+        },
+        "curtail_cost": 500,
+        "battery_kwh": 13.5,
+        "battery_kw": 5.0,
+        "battery_efficiency": 90,
+        "battery_cost_annual": 800,
+    }
+
+
+def solve_household(hh_inputs: dict[str, Any],
+                    system_results: dict[str, Any]) -> dict[str, Any]:
+    """Minimise household annual electricity bill given system clearing prices.
+
+    The household is a price-taker: it sees the sub-block prices from the
+    system model and decides how much to consume, curtail, and store.
+
+    Inputs (hh_inputs):
+      demand          — dict {block_name: kW} average demand per block
+      curtail_cost    — £/MWh willingness-to-pay / value of lost load
+      battery_kwh     — usable battery capacity (kWh)
+      battery_kw      — max charge/discharge power (kW)
+      battery_efficiency — round-trip efficiency (%)
+      battery_cost_annual — annualised cost of home battery (£/year)
+
+    Returns per-sub-block consumption, storage, curtailment, and spending.
+    """
+    subs = system_results["sub_blocks"]
+    blocks = system_results["blocks"]
+
+    hh_demand = hh_inputs.get("demand", {})
+    curtail_voll = hh_inputs.get("curtail_cost", 500)
+    bat_kwh = max(hh_inputs.get("battery_kwh", 0), 0)
+    bat_kw = max(hh_inputs.get("battery_kw", 0), 0)
+    eta = max(hh_inputs.get("battery_efficiency", 90), 1) / 100.0
+    bat_annual = hh_inputs.get("battery_cost_annual", 0)
+
+    prob = pulp.LpProblem("Household", pulp.LpMinimize)
+
+    def _s(n: str) -> str:
+        return n.replace(" ", "_").replace("-", "_")
+
+    sb_list = []
+    for sb in subs:
+        b = sb["block"]
+        i = sb["sub_idx"]
+        h = sb["hours"]
+        p = sb["price"]
+        dem_kw = hh_demand.get(b, 1.0)
+        sb_list.append((b, i, h, p, dem_kw))
+
+    consume = {}
+    curtail = {}
+    sto_chg = {}
+    sto_dis = {}
+    sto_lev = {}
+
+    for b, i, h, p, dem_kw in sb_list:
+        consume[b, i] = pulp.LpVariable(f"hc_{_s(b)}_{i}", 0, dem_kw)
+        curtail[b, i] = pulp.LpVariable(f"hx_{_s(b)}_{i}", 0, dem_kw)
+        sto_chg[b, i] = pulp.LpVariable(f"hschg_{_s(b)}_{i}", 0, bat_kw / 1000.0)
+        sto_dis[b, i] = pulp.LpVariable(f"hsdis_{_s(b)}_{i}", 0, bat_kw / 1000.0)
+        sto_lev[b, i] = pulp.LpVariable(f"hslev_{_s(b)}_{i}", 0, bat_kwh / 1000.0)
+
+    sto_lev_start = pulp.LpVariable("hslev_start", 0, bat_kwh / 1000.0)
+
+    # Objective: minimise annual cost = energy purchases − storage sales + curtailment penalty
+    # All in £.  demand/storage are in kW, prices in £/MWh, hours in h.
+    # kW × h = kWh; kWh × (£/MWh) / 1000 = £
+    obj = []
+    for b, i, h, p, dem_kw in sb_list:
+        obj.append(h * p * consume[b, i] / 1000.0)
+        obj.append(h * p * sto_chg[b, i] / 1000.0)
+        obj.append(-h * p * sto_dis[b, i] / 1000.0)
+        obj.append(h * curtail_voll * curtail[b, i] / 1000.0)
+
+    prob += pulp.lpSum(obj), "AnnualCost"
+
+    # Demand balance: consume + curtail = demand in each sub-block
+    for b, i, h, p, dem_kw in sb_list:
+        prob += consume[b, i] + curtail[b, i] == dem_kw, f"hbal_{_s(b)}_{i}"
+
+    # Storage dynamics
+    prev = sto_lev_start
+    for b, i, h, p, dem_kw in sb_list:
+        prob += (
+            sto_lev[b, i] == prev + h * (eta * sto_chg[b, i] - sto_dis[b, i])
+        ), f"hsdyn_{_s(b)}_{i}"
+        prev = sto_lev[b, i]
+
+    # Cyclical storage
+    last_b, last_i = sb_list[-1][0], sb_list[-1][1]
+    prob += sto_lev[last_b, last_i] == sto_lev_start, "hscyc"
+
+    solver = pulp.PULP_CBC_CMD(msg=0)
+    status = prob.solve(solver)
+
+    if pulp.LpStatus[status] != "Optimal":
+        return {"error": True, "status": pulp.LpStatus[status]}
+
+    def _v(var):
+        return round(pulp.value(var), 6)
+
+    total_bill = 0.0
+    total_kwh = 0.0
+    sb_results = []
+    for b, i, h, p, dem_kw in sb_list:
+        cons_kw = _v(consume[b, i])
+        curt_kw = _v(curtail[b, i])
+        chg_kw = _v(sto_chg[b, i])
+        dis_kw = _v(sto_dis[b, i])
+        lev_kwh = _v(sto_lev[b, i]) * 1000.0
+
+        net_kw = cons_kw + chg_kw - dis_kw
+        spend = h * p * net_kw / 1000.0
+
+        total_bill += spend
+        total_kwh += cons_kw * h
+
+        sb_results.append({
+            "block": b,
+            "sub_idx": i,
+            "label": next(s["label"] for s in subs if s["block"] == b and s["sub_idx"] == i),
+            "hours": h,
+            "price": p,
+            "demand_kw": dem_kw,
+            "consumed_kw": round(cons_kw, 4),
+            "curtailed_kw": round(curt_kw, 4),
+            "storage_charge_kw": round(chg_kw * 1000, 4),
+            "storage_discharge_kw": round(dis_kw * 1000, 4),
+            "storage_level_kwh": round(lev_kwh, 4),
+            "net_grid_kw": round(net_kw, 4),
+            "spend": round(spend, 2),
+            "kwh_consumed": round(cons_kw * h, 2),
+        })
+
+    total_bill_with_bat = total_bill + bat_annual if bat_kw > 0 else total_bill
+
+    return {
+        "error": False,
+        "status": "Optimal",
+        "sub_blocks": sb_results,
+        "total_bill": round(total_bill, 2),
+        "battery_annual_cost": round(bat_annual, 2) if bat_kw > 0 else 0,
+        "total_bill_with_battery": round(total_bill_with_bat, 2),
+        "total_kwh": round(total_kwh, 2),
+        "avg_unit_cost_per_kwh": round(total_bill / max(total_kwh, 0.001), 4),
+    }

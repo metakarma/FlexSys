@@ -97,6 +97,16 @@ All welfare and cost outputs are reported in full annual currency units. Interna
 
 This keeps the optimisation and reported totals consistent with the input units shown in the UI.
 
+## Household Bill Optimisation (Optional)
+
+An optional household analysis takes the system clearing prices and optimises a single household's annual electricity bill. The household is a price-taker — it does not affect system prices. Inputs:
+
+- **Demand per block** (kW) — average household load in each LDC block (default: 2 kW winter, 1.5 kW shoulder, 1 kW low demand)
+- **Value of lost load** (£/MWh) — curtailment threshold; demand is curtailed when price exceeds this value
+- **Home battery** — capacity (kWh), power (kW), round-trip efficiency, and annualised cost
+
+Outputs include total annual energy cost, battery cost, average unit cost (p/kWh), and a per-sub-block breakdown of consumption, curtailment, battery activity, and spending.
+
 ## AI Chat Assistant
 
 An expandable chat panel (toggle via the **AI Chat** button, bottom-right) lets users interrogate model results conversationally using Anthropic's Claude. Features:

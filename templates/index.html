@@ -594,6 +594,49 @@ body.beta-locked #beta-content {
     </div>
   </div>
 
+  <!-- Household (optional) -->
+  <div class="card" id="household-section">
+    <h2 style="cursor:pointer;" onclick="toggleHousehold()">
+      <span class="dot" style="background:#8B5CF6"></span>
+      Household Bill Optimisation (Optional)
+      <span id="hh-toggle-icon" style="float:right;font-size:18px;color:var(--muted);">&#9654;</span>
+    </h2>
+    <p style="font-size:13px;color:var(--muted);margin:-8px 0 0;">Takes system clearing prices and optimises a single household&rsquo;s demand, storage, and curtailment.</p>
+    <div id="hh-body" style="display:none;margin-top:16px;">
+      <div class="grid-2" style="margin-bottom:12px;">
+        <div class="field-group">
+          <label><input type="checkbox" id="hh_enabled"/> Enable household analysis</label>
+        </div>
+      </div>
+      <h3 style="margin:12px 0 8px;font-size:14px;">Household Demand (kW average per block)</h3>
+      <div class="grid-3" id="hh-demand-fields"></div>
+      <h3 style="margin:16px 0 8px;font-size:14px;">Curtailment &amp; Storage</h3>
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Value of Lost Load (<span class="cur">£</span>/MWh)</label>
+          <input type="number" id="hh_curtail_cost" step="any" min="0"/>
+        </div>
+        <div class="field-group">
+          <label>Battery Capacity (kWh)</label>
+          <input type="number" id="hh_battery_kwh" step="any" min="0"/>
+        </div>
+        <div class="field-group">
+          <label>Battery Power (kW)</label>
+          <input type="number" id="hh_battery_kw" step="any" min="0"/>
+        </div>
+        <div class="field-group">
+          <label>Round-Trip Efficiency (%)</label>
+          <input type="number" id="hh_battery_efficiency" step="any" min="1" max="100"/>
+        </div>
+        <div class="field-group">
+          <label>Battery Annual Cost (<span class="cur">£</span>/year)</label>
+          <input type="number" id="hh_battery_cost" step="any" min="0"/>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">The household is a price-taker. It sees system clearing prices and minimises its annual bill by choosing when to consume, curtail, charge, or discharge its battery.</p>
+    </div>
+  </div>
+
   <!-- Action -->
   <div style="text-align:center;margin:28px 0;">
     <button class="btn-primary" id="btn-solve" onclick="runOptimise()">
@@ -683,6 +726,17 @@ body.beta-locked #beta-content {
       <div class="dl-bar"><button class="dl-btn" onclick="dlDetailCSV()">CSV</button></div>
     </div>
 
+    <div class="card" id="household-results-card" style="display:none;">
+      <h2><span class="dot" style="background:#8B5CF6"></span> Household Bill Optimisation</h2>
+      <div id="household-summary"></div>
+      <div class="plot-container" id="plot-household"></div>
+      <div class="dl-bar">
+        <button class="dl-btn" onclick="dlPlotPNG('plot-household','household_bill')">PNG</button>
+        <button class="dl-btn" onclick="dlHouseholdCSV()">CSV</button>
+      </div>
+      <div id="household-detail"></div>
+    </div>
+
     <div class="card">
       <h2><span class="dot" style="background:var(--accent)"></span> Comments &amp; Feature Requests</h2>
       <p style="font-size:14px;color:var(--text);margin-bottom:10px;">
@@ -758,6 +812,7 @@ body.beta-locked #beta-content {
 
 <script>
 const DEFAULTS = {{ defaults | safe }};
+const HH_DEFAULTS = {{ hh_defaults | safe }};
 const BETA_REQUIRED = {{ 'true' if beta_required else 'false' }};
 const BETA_AUTHORIZED = {{ 'true' if beta_authorized else 'false' }};
 
@@ -773,7 +828,33 @@ function init() {
   buildZVCProfile();
   buildDemandTabs();
   buildSupply();
+  buildHousehold();
   updateCurrency();
+}
+
+function toggleHousehold() {
+  const body = document.getElementById("hh-body");
+  const icon = document.getElementById("hh-toggle-icon");
+  if (body.style.display === "none") { body.style.display = "block"; icon.innerHTML = "&#9660;"; }
+  else { body.style.display = "none"; icon.innerHTML = "&#9654;"; }
+}
+
+function buildHousehold() {
+  const hh = HH_DEFAULTS;
+  const c = document.getElementById("hh-demand-fields");
+  DEFAULTS.blocks.forEach(b => {
+    const val = hh.demand[b] || 1.0;
+    c.innerHTML += `<div class="field-group">
+      <label>${b} (kW)</label>
+      <input type="number" data-hh-demand="${b}" value="${val}" step="any" min="0"/>
+    </div>`;
+  });
+  document.getElementById("hh_enabled").checked = hh.enabled || false;
+  document.getElementById("hh_curtail_cost").value = hh.curtail_cost;
+  document.getElementById("hh_battery_kwh").value = hh.battery_kwh;
+  document.getElementById("hh_battery_kw").value = hh.battery_kw;
+  document.getElementById("hh_battery_efficiency").value = hh.battery_efficiency;
+  document.getElementById("hh_battery_cost").value = hh.battery_cost_annual;
 }
 
 function buildLDC() {
@@ -958,7 +1039,26 @@ function gatherInputs() {
       storage_cycles: +document.getElementById("storage_cycles").value,
       storage_efficiency: +document.getElementById("storage_efficiency").value,
       td_cost: +document.getElementById("td_cost").value,
-    }
+    },
+    household: gatherHouseholdInputs(),
+  };
+}
+
+function gatherHouseholdInputs() {
+  const enabled = document.getElementById("hh_enabled").checked;
+  const demand = {};
+  DEFAULTS.blocks.forEach(b => {
+    const el = document.querySelector(`[data-hh-demand="${b}"]`);
+    demand[b] = el ? +el.value : 1.0;
+  });
+  return {
+    enabled,
+    demand,
+    curtail_cost: +document.getElementById("hh_curtail_cost").value,
+    battery_kwh: +document.getElementById("hh_battery_kwh").value,
+    battery_kw: +document.getElementById("hh_battery_kw").value,
+    battery_efficiency: +document.getElementById("hh_battery_efficiency").value,
+    battery_cost_annual: +document.getElementById("hh_battery_cost").value,
   };
 }
 
@@ -1224,8 +1324,64 @@ function renderResults(data, inputs) {
   });
   document.getElementById("detail-tables").innerHTML = t;
 
+  // Household results
+  const hhCard = document.getElementById("household-results-card");
+  if (data.household && !data.household.error) {
+    renderHouseholdResults(data.household, data.plots.household);
+    hhCard.style.display = "block";
+  } else {
+    hhCard.style.display = "none";
+  }
+
   document.getElementById("results").style.display = "block";
   document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+}
+
+function renderHouseholdResults(hh, plotSrc) {
+  const cur = getCur();
+  let m = `<div class="metrics" style="margin-bottom:16px;">`;
+  m += `<div class="metric-card"><div class="value">${cur}${hh.total_bill.toLocaleString(undefined, {maximumFractionDigits:0})}</div><div class="label">Annual Energy Cost</div></div>`;
+  if (hh.battery_annual_cost > 0) {
+    m += `<div class="metric-card"><div class="value">${cur}${hh.battery_annual_cost.toLocaleString(undefined, {maximumFractionDigits:0})}</div><div class="label">Battery Annual Cost</div></div>`;
+    m += `<div class="metric-card"><div class="value">${cur}${hh.total_bill_with_battery.toLocaleString(undefined, {maximumFractionDigits:0})}</div><div class="label">Total Annual Cost</div></div>`;
+  }
+  m += `<div class="metric-card"><div class="value">${hh.total_kwh.toLocaleString(undefined, {maximumFractionDigits:0})} kWh</div><div class="label">Annual Consumption</div></div>`;
+  const pPerKwh = (hh.avg_unit_cost_per_kwh * 100).toFixed(1);
+  m += `<div class="metric-card"><div class="value">${pPerKwh}p/kWh</div><div class="label">Average Unit Cost</div></div>`;
+  m += `</div>`;
+  document.getElementById("household-summary").innerHTML = m;
+
+  if (plotSrc) {
+    document.getElementById("plot-household").innerHTML = `<img src="${plotSrc}" alt="Household"/>`;
+  }
+
+  let tbl = `<table style="margin-top:16px;"><thead><tr>
+    <th>Sub-Block</th><th>Hours</th><th>Price (${cur}/MWh)</th>
+    <th>Demand (kW)</th><th>Consumed (kW)</th><th>Curtailed (kW)</th>
+    <th>Charge (kW)</th><th>Discharge (kW)</th><th>Battery (kWh)</th>
+    <th>Spend (${cur})</th>
+  </tr></thead><tbody>`;
+  hh.sub_blocks.forEach(sb => {
+    tbl += `<tr>
+      <td>${escHtml(sb.block)} ${escHtml(sb.label)}</td>
+      <td>${sb.hours.toFixed(0)}</td>
+      <td>${cur}${sb.price.toFixed(0)}</td>
+      <td>${sb.demand_kw.toFixed(2)}</td>
+      <td>${sb.consumed_kw.toFixed(2)}</td>
+      <td>${sb.curtailed_kw.toFixed(2)}</td>
+      <td>${(sb.storage_charge_kw / 1000).toFixed(3)}</td>
+      <td>${(sb.storage_discharge_kw / 1000).toFixed(3)}</td>
+      <td>${sb.storage_level_kwh.toFixed(1)}</td>
+      <td>${cur}${sb.spend.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+    </tr>`;
+  });
+  tbl += `</tbody></table>`;
+  document.getElementById("household-detail").innerHTML = tbl;
+}
+
+function dlHouseholdCSV() {
+  const el = document.querySelector("#household-detail table");
+  if (el) dlTableCSV(el, "household_bill");
 }
 
 // ── Download helpers ───────────────────────────────────────────────────

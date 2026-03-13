@@ -22,7 +22,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 
 from pathlib import Path
 
-from model import default_inputs, solve
+from model import default_inputs, default_household_inputs, solve, solve_household
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
@@ -74,9 +74,11 @@ def _beta_api_denied():
 @app.route("/")
 def index():
     defaults = default_inputs()
+    hh_defaults = default_household_inputs()
     return render_template(
         "index.html",
         defaults=json.dumps(defaults),
+        hh_defaults=json.dumps(hh_defaults),
         beta_required=_beta_enabled(),
         beta_authorized=_has_beta_access(),
         contact_email=CONTACT_EMAIL,
@@ -104,6 +106,14 @@ def optimise():
         cur = inputs.get("currency", "$")
         plots = generate_plots(inputs, results, cur)
         results["plots"] = plots
+
+        hh = inputs.get("household")
+        if hh and hh.get("enabled"):
+            hh_results = solve_household(hh, results)
+            results["household"] = hh_results
+            if not hh_results.get("error"):
+                results["plots"]["household"] = _plot_household(hh_results, cur)
+
         return jsonify(results)
     except Exception as exc:
         traceback.print_exc()
@@ -1307,6 +1317,74 @@ def _plot_flexibility(inputs: dict, results: dict) -> str | None:
 
     fig.suptitle("Demand Flexibility — Shifting, Curtailment & Storage",
                  fontsize=14, fontweight="bold", y=1.02)
+    fig.tight_layout()
+    return _fig_to_base64(fig)
+
+
+# ---------------------------------------------------------------------------
+# Household bill plot
+# ---------------------------------------------------------------------------
+
+HH_COLORS = {
+    "Grid Purchase": "#6366F1",
+    "Storage Charge": "#3B82F6",
+    "Storage Revenue": "#10B981",
+    "Curtailment Cost": "#EF4444",
+}
+
+
+def _plot_household(hh: dict, cur: str = "£") -> str:
+    """Spending breakdown bar chart for the household optimisation."""
+    sbs = hh["sub_blocks"]
+
+    labels = [f"{sb['block'][:3]} {sb['label'][:3]}" for sb in sbs]
+    x = np.arange(len(sbs))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    spends = [sb["spend"] for sb in sbs]
+    colors = [BLOCK_COLORS.get(sb["block"], "#6366F1") for sb in sbs]
+    bars = ax1.bar(x, spends, color=colors, edgecolor="white", width=0.6)
+    for bar, val in zip(bars, spends):
+        if abs(val) > 0.5:
+            ax1.text(bar.get_x() + bar.get_width() / 2,
+                     bar.get_height() + (1 if val >= 0 else -3),
+                     f"{cur}{val:,.0f}", ha="center", va="bottom",
+                     fontsize=9, fontweight="bold")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels, fontsize=8, rotation=30, ha="right")
+    ax1.set_ylabel(f"Annual Spend ({cur})")
+    ax1.set_title("Household Spend by Sub-Block", fontsize=12, fontweight="bold")
+    ax1.axhline(0, color="grey", linewidth=0.5)
+    ax1.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{cur}{v:,.0f}"))
+
+    consumed = [sb["consumed_kw"] for sb in sbs]
+    curtailed = [sb["curtailed_kw"] for sb in sbs]
+    chg = [sb["storage_charge_kw"] / 1000 for sb in sbs]
+    dis = [sb["storage_discharge_kw"] / 1000 for sb in sbs]
+
+    bar_w = 0.35
+    ax2.bar(x - bar_w / 2, consumed, bar_w, label="Consumed (kW)",
+            color="#6366F1", edgecolor="white")
+    ax2.bar(x + bar_w / 2, curtailed, bar_w, label="Curtailed (kW)",
+            color="#EF4444", edgecolor="white")
+
+    if any(c > 0.001 for c in chg) or any(d > 0.001 for d in dis):
+        ax2_twin = ax2.twinx()
+        ax2_twin.plot(x, [sb["storage_level_kwh"] for sb in sbs], "o-",
+                      color="#8B5CF6", linewidth=2, markersize=6, label="Battery (kWh)")
+        ax2_twin.set_ylabel("Battery Level (kWh)", color="#8B5CF6")
+        ax2_twin.tick_params(axis="y", labelcolor="#8B5CF6")
+        ax2_twin.legend(loc="upper right", fontsize=8)
+
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels, fontsize=8, rotation=30, ha="right")
+    ax2.set_ylabel("kW")
+    ax2.set_title("Household Demand & Storage", fontsize=12, fontweight="bold")
+    ax2.legend(loc="upper left", fontsize=8)
+
+    fig.suptitle("Household Bill Optimisation",
+                 fontsize=14, fontweight="bold")
     fig.tight_layout()
     return _fig_to_base64(fig)
 
