@@ -392,11 +392,13 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> tuple[str, dict]:
     from matplotlib.patches import Patch
     subs = results["sub_blocks"]
 
-    def _gen_total(s):
+    def _demand_level(s):
         sup = s["supply"]
-        return sup["zvc"] + sup["gas"] + sup["storage_discharge"]
+        gen = sup["zvc"] + sup["gas"] + sup["storage_discharge"]
+        curtailed = sum(t["lost"] for t in s["demand_tiers"])
+        return gen + max(curtailed, 0)
 
-    sorted_subs = sorted(subs, key=_gen_total, reverse=True)
+    sorted_subs = sorted(subs, key=_demand_level, reverse=True)
 
     fig, ax = plt.subplots(figsize=(11, 5.5))
 
@@ -407,7 +409,7 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> tuple[str, dict]:
         curtailed = sum(t["lost"] for t in sb["demand_tiers"])
         b = sb["block"]
         sup = sb["supply"]
-        gen = _gen_total(sb)
+        gen = sup["zvc"] + sup["gas"] + sup["storage_discharge"]
 
         stack = [
             ("Renewables", sup["zvc"]),

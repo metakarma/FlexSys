@@ -1027,11 +1027,11 @@ function renderDurationHoverPlot(containerId, imgSrc, items, meta, buildTooltipH
 function renderGenerationDurationPlot(data) {
   const items = [...data.sub_blocks]
     .map(sb => {
-      const gen = sb.supply.zvc + sb.supply.gas + sb.supply.storage_discharge;
+      const gen  = sb.supply.zvc + sb.supply.gas + sb.supply.storage_discharge;
       const curtailed = sb.demand_tiers.reduce((sum, t) => sum + t.lost, 0);
       return {...sb, generation_total: gen, curtailed};
     })
-    .sort((a, b) => b.generation_total - a.generation_total);
+    .sort((a, b) => (b.generation_total + Math.max(b.curtailed, 0)) - (a.generation_total + Math.max(a.curtailed, 0)));
 
   renderDurationHoverPlot("plot-ldc", data.plots.ldc, items, data.plots.ldc_meta, (sb) => `
     <h4>${escHtml(sb.block)}</h4>
