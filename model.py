@@ -77,7 +77,7 @@ def default_inputs() -> dict[str, Any]:
 
     supply = {
         "zvc_capital_cost": 450,
-        "nuclear_capital_cost": 550,
+        "nuclear_capital_cost": 600,
         "nuclear_variable_cost": 10,
         "nuclear_planned_outage": 10,
         "nuclear_peak_unavail": 5,

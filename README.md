@@ -49,7 +49,7 @@ The model determines the **welfare-maximising capacity mix**. No capacities are 
 | Technology | Cost Parameters |
 |-----------|----------------|
 | **Renewables** (wind, solar) | Annualised capital cost: £450/kW/year. Zero variable cost. |
-| **Nuclear** | Capital: £550/kW/year. Variable: £10/MWh. Firm baseload, zero carbon. Planned outage: 10%. Peak unavailability: 5%. |
+| **Nuclear** | Capital: £600/kW/year. Variable: £10/MWh. Firm baseload, zero carbon. Planned outage: 10%. Peak unavailability: 5%. |
 | **Gas peaker** | Capital: £40/kW/year. Variable: £80/MWh + carbon price (default £50/tCO₂). |
 | **Battery storage** | Duration: 4h. Connection: £150,000/MW. Cells: £150,000/MWh. Life: 15 years. Discount rate: 10%. 365 cycles/year. 95% round-trip efficiency. |
 | **Transmission & Distribution** | Capacity cost: £10/kW/year. Sized to peak system generation. |
