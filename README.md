@@ -1,6 +1,6 @@
 # Peaky Flexers — Electricity Market LP Optimiser
 
-A web application that solves a welfare-maximising linear program for electricity market price formation. The model simultaneously determines **optimal capacity investment** and **dispatch** for four supply-side elements — renewables (zero variable cost), gas peakers, battery storage, and transmission & distribution — across a three-block Load Duration Curve with **renewables intermittency sub-blocks**, flexible (shiftable) and expandable demand.
+A web application that solves a welfare-maximising linear program for electricity market price formation. The model simultaneously determines **optimal capacity investment** and **dispatch** for five supply-side elements — renewables (zero variable cost), nuclear (firm baseload), gas peakers, battery storage, and transmission & distribution — across a three-block Load Duration Curve with **renewables intermittency sub-blocks**, flexible (shiftable) and expandable demand.
 
 A currency selector (£/$/€) at the top of the UI updates all labels and plot annotations. Each input section has a hover-over **info button** (ⓘ) that shows the relevant portion of the user guide inline.
 
@@ -48,7 +48,8 @@ The model determines the **welfare-maximising capacity mix**. No capacities are 
 
 | Technology | Cost Parameters |
 |-----------|----------------|
-| **Renewables** (wind, solar, nuclear) | Annualised capital cost: £450/kW/year. Zero variable cost. |
+| **Renewables** (wind, solar) | Annualised capital cost: £450/kW/year. Zero variable cost. |
+| **Nuclear** | Capital: £550/kW/year. Variable: £10/MWh. Firm baseload, zero carbon. Planned outage: 10%. Peak unavailability: 5%. |
 | **Gas peaker** | Capital: £40/kW/year. Variable: £80/MWh + carbon price (default £50/tCO₂). |
 | **Battery storage** | Duration: 4h. Connection: £150,000/MW. Cells: £150,000/MWh. Life: 15 years. Discount rate: 10%. 365 cycles/year. 95% round-trip efficiency. |
 | **Transmission & Distribution** | Capacity cost: £10/kW/year. Sized to peak system generation. |
@@ -67,7 +68,7 @@ Round-trip efficiency (default 95%) creates an implicit cycling cost that depend
 
 ### Transmission & Distribution
 
-T&D capacity is determined endogenously. The constraint binds at peak total generation dispatched (renewables + gas + storage discharge) across all sub-blocks. The annualised T&D capacity cost (default £10/kW/year) enters the welfare objective alongside generation investment costs.
+T&D capacity is determined endogenously. The constraint binds at peak total generation dispatched (renewables + nuclear + gas + storage discharge) across all sub-blocks. The annualised T&D capacity cost (default £10/kW/year) enters the welfare objective alongside generation investment costs.
 
 ### Demand
 

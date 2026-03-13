@@ -318,7 +318,7 @@ def generate_plots(inputs: dict, results: dict, cur: str = "$") -> dict:
     return plots
 
 
-GEN_COLORS = {"Renewables": "#10B981", "Gas": "#EF4444", "Storage": "#3B82F6"}
+GEN_COLORS = {"Renewables": "#10B981", "Nuclear": "#F59E0B", "Gas": "#EF4444", "Storage": "#3B82F6"}
 
 
 INPUT_TIER_COLORS = {"High": "#4C1D95", "Mid": "#7C3AED", "Low": "#C4B5FD"}
@@ -394,7 +394,7 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> tuple[str, dict]:
 
     def _demand_level(s):
         sup = s["supply"]
-        gen = sup["zvc"] + sup["gas"] + sup["storage_discharge"]
+        gen = sup["zvc"] + sup.get("nuclear", 0) + sup["gas"] + sup["storage_discharge"]
         curtailed = sum(t["lost"] for t in s["demand_tiers"])
         return gen + max(curtailed, 0)
 
@@ -409,10 +409,11 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> tuple[str, dict]:
         curtailed = sum(t["lost"] for t in sb["demand_tiers"])
         b = sb["block"]
         sup = sb["supply"]
-        gen = sup["zvc"] + sup["gas"] + sup["storage_discharge"]
+        gen = sup["zvc"] + sup.get("nuclear", 0) + sup["gas"] + sup["storage_discharge"]
 
         stack = [
             ("Renewables", sup["zvc"]),
+            ("Nuclear", sup.get("nuclear", 0)),
             ("Gas", sup["gas"]),
             ("Storage", sup["storage_discharge"]),
         ]
@@ -446,7 +447,7 @@ def _plot_ldc(inputs: dict, results: dict, cur: str = "$") -> tuple[str, dict]:
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
 
     legend_handles = [Patch(fc=GEN_COLORS[t], ec="white", label=t)
-                      for t in ("Renewables", "Gas", "Storage")]
+                      for t in ("Renewables", "Nuclear", "Gas", "Storage")]
     if has_curtailed:
         legend_handles.append(
             Patch(facecolor="none", edgecolor="#6B7280", hatch="///",
@@ -518,9 +519,9 @@ def _plot_capacity(results: dict, cur: str = "$") -> str:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
 
-    techs = ["Renewables", "Gas", "Storage", "T&D"]
-    cap_vals = [caps["zvc"], caps["gas"], caps["storage_power"], caps.get("td", 0)]
-    colors = ["#10B981", "#EF4444", "#3B82F6", "#8B5CF6"]
+    techs = ["Renewables", "Nuclear", "Gas", "Storage", "T&D"]
+    cap_vals = [caps["zvc"], caps.get("nuclear", 0), caps["gas"], caps["storage_power"], caps.get("td", 0)]
+    colors = ["#10B981", "#F59E0B", "#EF4444", "#3B82F6", "#8B5CF6"]
 
     bars = ax1.bar(techs, cap_vals, color=colors, edgecolor="white", width=0.6)
     for bar, val in zip(bars, cap_vals):
@@ -530,8 +531,8 @@ def _plot_capacity(results: dict, cur: str = "$") -> str:
     ax1.set_ylabel("Capacity (GW)")
     ax1.set_title("Optimal Power Capacity", fontsize=12, fontweight="bold")
 
-    cost_labels = ["Renewables", "Gas", "Storage", "T&D"]
-    cost_vals = [costs["zvc"], costs["gas"],
+    cost_labels = ["Renewables", "Nuclear", "Gas", "Storage", "T&D"]
+    cost_vals = [costs["zvc"], costs.get("nuclear", 0), costs["gas"],
                  costs["storage_power"] + costs["storage_energy"],
                  costs.get("td", 0)]
     nonzero = [(l, v, c) for l, v, c in zip(cost_labels, cost_vals, colors) if v > 0]
@@ -569,7 +570,7 @@ def _plot_dispatch(inputs: dict, results: dict, cur: str = "$") -> str:
         dem_total = sum(t["served"] for t in sb["demand_tiers"])
         dem_total += sb["shifted_in_total"] + sb["expandable"]["activated"]
         dem_total += sb["supply"]["storage_charge"]
-        sup_total = sb["supply"]["zvc"] + sb["supply"]["gas"] + sb["supply"]["storage_discharge"]
+        sup_total = sb["supply"]["zvc"] + sb["supply"].get("nuclear", 0) + sb["supply"]["gas"] + sb["supply"]["storage_discharge"]
         y_max = max(y_max, dem_total, sup_total)
     y_max = y_max * 1.1  # 10% headroom
 
@@ -597,9 +598,10 @@ def _plot_dispatch(inputs: dict, results: dict, cur: str = "$") -> str:
                 demand_labels.append("Sto. Charge")
                 demand_vals.append(sb["supply"]["storage_charge"])
 
-            supply_labels = ["Renewables", "Gas", "Storage"]
+            supply_labels = ["Renewables", "Nuclear", "Gas", "Storage"]
             supply_vals = [
                 sb["supply"]["zvc"],
+                sb["supply"].get("nuclear", 0),
                 sb["supply"]["gas"],
                 sb["supply"]["storage_discharge"],
             ]
@@ -641,7 +643,7 @@ DEMAND_COLOR_MAP = {
     "High": "#6366F1", "Mid": "#8B5CF6", "Low": "#A78BFA",
     "Shifted In": "#F59E0B", "Expandable": "#C4B5FD", "Sto. Charge": "#3B82F6",
 }
-SUPPLY_COLOR_MAP = {"Renewables": "#10B981", "Gas": "#EF4444", "Storage": "#3B82F6"}
+SUPPLY_COLOR_MAP = {"Renewables": "#10B981", "Nuclear": "#F59E0B", "Gas": "#EF4444", "Storage": "#3B82F6"}
 
 
 def _stacked_bar(ax, x_pos, vals, labels, colors, fmt=".1f"):
@@ -695,9 +697,10 @@ def _plot_dispatch_gwh(inputs: dict, results: dict, cur: str = "$") -> str:
                 demand_labels.append("Sto. Charge")
                 demand_vals.append(sb["supply"]["storage_charge"] * h)
 
-            supply_labels = ["Renewables", "Gas", "Storage"]
+            supply_labels = ["Renewables", "Nuclear", "Gas", "Storage"]
             supply_vals = [
                 sb["supply"]["zvc"] * h,
+                sb["supply"].get("nuclear", 0) * h,
                 sb["supply"]["gas"] * h,
                 sb["supply"]["storage_discharge"] * h,
             ]
@@ -1058,10 +1061,10 @@ def _compute_flexibility(inputs: dict, results: dict) -> list[dict]:
                    + h_hi * hi["supply"]["storage_discharge"]) / h_total
 
         # Total supply and storage fraction for pro-rating "served by storage"
-        sup_lo = (lo["supply"]["zvc"] + lo["supply"]["gas"]
-                  + lo["supply"]["storage_discharge"])
-        sup_hi = (hi["supply"]["zvc"] + hi["supply"]["gas"]
-                  + hi["supply"]["storage_discharge"])
+        sup_lo = (lo["supply"]["zvc"] + lo["supply"].get("nuclear", 0)
+                  + lo["supply"]["gas"] + lo["supply"]["storage_discharge"])
+        sup_hi = (hi["supply"]["zvc"] + hi["supply"].get("nuclear", 0)
+                  + hi["supply"]["gas"] + hi["supply"]["storage_discharge"])
         sto_frac_lo = lo["supply"]["storage_discharge"] / sup_lo if sup_lo > 0 else 0
         sto_frac_hi = hi["supply"]["storage_discharge"] / sup_hi if sup_hi > 0 else 0
 

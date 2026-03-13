@@ -169,7 +169,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>Peaky Flexers is a <strong>welfare-maximising linear program</strong> (LP) for an electricity market. It answers a deceptively simple question: <em>if we had to design an electricity system from scratch, what mix of generation and storage capacity would maximise the total value that consumers get from electricity, minus the cost of providing it?</em></p>
 
-<p>The model works with four supply-side elements&mdash;renewables (zero variable cost), gas peakers, battery storage, and transmission &amp; distribution&mdash;and a demand side that can flex: consumers can shift demand to cheaper periods, expand consumption when prices are low, or curtail when the cost of supply exceeds the value of the electricity to them.</p>
+<p>The model works with five supply-side elements&mdash;renewables (zero variable cost), nuclear (firm baseload), gas peakers, battery storage, and transmission &amp; distribution&mdash;and a demand side that can flex: consumers can shift demand to cheaper periods, expand consumption when prices are low, or curtail when the cost of supply exceeds the value of the electricity to them.</p>
 
 <p>The key output is a set of <strong>market-clearing prices</strong>&mdash;one for each time period. These prices emerge naturally from the optimisation: they are the <em>shadow prices</em> on the energy-balance constraints, representing the cost to the system of serving one more megawatt-hour of demand in that period. In a well-functioning market, these are the prices that would prevail.</p>
 
@@ -259,10 +259,20 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 <!-- ---- Supply Costs ---- -->
 <h3 id="supply-costs">2.4 Supply-Side Technology Costs</h3>
 
-<p>The model does <strong>not</strong> pre-set any generation capacities. Instead, it decides how much of each technology to build, balancing capital costs against the value of the electricity they produce. There are four supply-side elements:</p>
+<p>The model does <strong>not</strong> pre-set any generation capacities. Instead, it decides how much of each technology to build, balancing capital costs against the value of the electricity they produce. There are five supply-side elements:</p>
 
 <h3 style="margin-top:16px;">Renewables (Zero Variable Cost)</h3>
-<p>Wind, solar, and nuclear. Once built, they produce electricity at zero fuel cost, but their output depends on weather conditions (captured by the availability profile above). The only input is the annualised capital cost (&pound;/kW/year).</p>
+<p>Wind and solar. Once built, they produce electricity at zero fuel cost, but their output depends on weather conditions (captured by the availability profile above). The only input is the annualised capital cost (&pound;/kW/year).</p>
+
+<h3>Nuclear</h3>
+<p>Firm baseload capacity with zero carbon emissions. You set:</p>
+<ul>
+  <li><strong>Capital cost</strong> (&pound;/kW/year) &mdash; the annualised cost of building the plant. Default &pound;550/kW/yr.</li>
+  <li><strong>Variable cost</strong> (&pound;/MWh) &mdash; fuel and O&amp;M costs. Default &pound;10/MWh.</li>
+  <li><strong>Planned outage</strong> (%) &mdash; fraction of time offline for scheduled maintenance, applied uniformly across all periods. Default 10%.</li>
+  <li><strong>Peak unavailability</strong> (%) &mdash; additional probability of being unavailable during winter peak, on top of planned outages. This captures unplanned or forced outage risk at the time it matters most. Default 5%.</li>
+</ul>
+<p>Unlike renewables, nuclear is not affected by the renewables availability profile. Its effective capacity in non-peak periods is <em>capacity &times; (1 &minus; planned outage)</em>; during winter peak sub-blocks it is further derated to <em>capacity &times; (1 &minus; planned outage) &times; (1 &minus; peak unavailability)</em>.</p>
 
 <h3>Gas Peaker</h3>
 <p>A flexible thermal plant that can run whenever needed but burns gas. You set:</p>
@@ -318,7 +328,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>It simultaneously decides:</p>
 <ol>
-  <li><strong>How much capacity to build</strong> for each technology (renewables, gas, storage, T&amp;D)</li>
+  <li><strong>How much capacity to build</strong> for each technology (renewables, nuclear, gas, storage, T&amp;D)</li>
   <li><strong>How to dispatch</strong> each technology in every sub-block (6 sub-blocks total)</li>
   <li><strong>How much demand to serve, shift, or curtail</strong> in each tier and sub-block</li>
   <li><strong>How to operate storage</strong>&mdash;when to charge, when to discharge, and how much energy to hold</li>
@@ -326,7 +336,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>The objective is to <strong>maximise net welfare</strong>: the total value that consumers place on the electricity they receive, minus the total cost of providing it (both capital and operating costs).</p>
 
-<p>Think of it as a social planner trying to make the best possible use of available resources. The planner values each MWh of served demand at its VoLL, credits shifted demand at VoLL minus the shift cost, and charges for gas generation at its variable cost and all technologies at their capital cost. Internally, the model converts GW × hours into MWh (×1000) and GW/GWh into kW/kWh (×1,000,000), so all welfare and cost outputs are reported in full annual currency units rather than “thousands”.</p>
+<p>Think of it as a social planner trying to make the best possible use of available resources. The planner values each MWh of served demand at its VoLL, credits shifted demand at VoLL minus the shift cost, and charges for nuclear and gas generation at their variable costs and all technologies at their capital costs. Internally, the model converts GW × hours into MWh (×1000) and GW/GWh into kW/kWh (×1,000,000), so all welfare and cost outputs are reported in full annual currency units rather than “thousands”.</p>
 
 <p>The optimisation is subject to physical and economic constraints:</p>
 <ul>

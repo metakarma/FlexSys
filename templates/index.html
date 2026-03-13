@@ -479,6 +479,7 @@ body.beta-locked #beta-content {
         <p>The model determines how much of each technology to build. No capacities are pre-set.</p>
         <ul>
           <li><strong>Renewables</strong> &mdash; zero fuel cost; output limited by availability profile. Input: annualised capital cost.</li>
+          <li><strong>Nuclear</strong> &mdash; firm baseload capacity with low variable cost and zero carbon emissions. Inputs: annualised capital cost, variable cost.</li>
           <li><strong>Gas Peaker</strong> &mdash; flexible, burns gas. Inputs: capital cost, variable cost, carbon price, emission factor.</li>
           <li><strong>Storage</strong> &mdash; specified via CapEx: duration (h), connection cost (&pound;/MW), cell cost (&pound;/MWh), asset life, discount rate (%). Annualised using capital recovery factor. No fuel cost &mdash; implied cycling cost is an output.</li>
           <li><strong>T&amp;D</strong> &mdash; network capacity, sized to peak generation. Input: annualised capacity cost.</li>
@@ -489,6 +490,7 @@ body.beta-locked #beta-content {
     <p style="font-size:13px;color:var(--muted);margin:-8px 0 16px;">The model determines optimal capacities. No fixed capacities are pre-set.</p>
     <div class="tabs" id="supply-tabs">
       <button class="tab-btn active" onclick="switchSupplyTab(this,'supply-renewables')">Renewables</button>
+      <button class="tab-btn" onclick="switchSupplyTab(this,'supply-nuclear')">Nuclear</button>
       <button class="tab-btn" onclick="switchSupplyTab(this,'supply-gas')">Gas Peaker</button>
       <button class="tab-btn" onclick="switchSupplyTab(this,'supply-storage')">Storage</button>
       <button class="tab-btn" onclick="switchSupplyTab(this,'supply-td')">T&amp;D</button>
@@ -501,7 +503,29 @@ body.beta-locked #beta-content {
           <input type="number" id="zvc_capital_cost" step="any"/>
         </div>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Zero variable cost generation (wind, solar, nuclear). Output depends on the Renewables Availability Profile above.</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Zero variable cost generation (wind, solar). Output depends on the Renewables Availability Profile above.</p>
+    </div>
+
+    <div class="supply-panel" id="supply-nuclear">
+      <div class="grid-2">
+        <div class="field-group">
+          <label>Capital Cost (<span class="cur">£</span>/kW/year)</label>
+          <input type="number" id="nuclear_capital_cost" step="any"/>
+        </div>
+        <div class="field-group">
+          <label>Variable Cost (<span class="cur">£</span>/MWh)</label>
+          <input type="number" id="nuclear_variable_cost" step="any"/>
+        </div>
+        <div class="field-group">
+          <label>Planned Outage (%)</label>
+          <input type="number" id="nuclear_planned_outage" step="any" min="0" max="100"/>
+        </div>
+        <div class="field-group">
+          <label>Peak Unavailability (%)</label>
+          <input type="number" id="nuclear_peak_unavail" step="any" min="0" max="100"/>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">Firm baseload with zero carbon emissions. Planned outage reduces availability in all periods. Peak unavailability is an additional derating applied only during winter peak sub-blocks.</p>
     </div>
 
     <div class="supply-panel" id="supply-gas">
@@ -845,6 +869,10 @@ function buildDemandTabs() {
 function buildSupply() {
   const s = DEFAULTS.supply;
   document.getElementById("zvc_capital_cost").value = s.zvc_capital_cost;
+  document.getElementById("nuclear_capital_cost").value = s.nuclear_capital_cost;
+  document.getElementById("nuclear_variable_cost").value = s.nuclear_variable_cost;
+  document.getElementById("nuclear_planned_outage").value = s.nuclear_planned_outage;
+  document.getElementById("nuclear_peak_unavail").value = s.nuclear_peak_unavail;
   document.getElementById("gas_capital_cost").value = s.gas_capital_cost;
   document.getElementById("gas_variable_cost").value = s.gas_variable_cost;
   document.getElementById("carbon_price").value = s.carbon_price;
@@ -914,6 +942,10 @@ function gatherInputs() {
     currency: getCur(),
     supply: {
       zvc_capital_cost: +document.getElementById("zvc_capital_cost").value,
+      nuclear_capital_cost: +document.getElementById("nuclear_capital_cost").value,
+      nuclear_variable_cost: +document.getElementById("nuclear_variable_cost").value,
+      nuclear_planned_outage: +document.getElementById("nuclear_planned_outage").value,
+      nuclear_peak_unavail: +document.getElementById("nuclear_peak_unavail").value,
       gas_capital_cost: +document.getElementById("gas_capital_cost").value,
       gas_variable_cost: +document.getElementById("gas_variable_cost").value,
       carbon_price: +document.getElementById("carbon_price").value,
@@ -1027,7 +1059,7 @@ function renderDurationHoverPlot(containerId, imgSrc, items, meta, buildTooltipH
 function renderGenerationDurationPlot(data) {
   const items = [...data.sub_blocks]
     .map(sb => {
-      const gen  = sb.supply.zvc + sb.supply.gas + sb.supply.storage_discharge;
+      const gen  = sb.supply.zvc + (sb.supply.nuclear || 0) + sb.supply.gas + sb.supply.storage_discharge;
       const curtailed = sb.demand_tiers.reduce((sum, t) => sum + t.lost, 0);
       return {...sb, generation_total: gen, curtailed};
     })
@@ -1038,6 +1070,7 @@ function renderGenerationDurationPlot(data) {
     <div class="muted">${escHtml(sb.label)} · ${sb.hours.toFixed(0)}h</div>
     <div class="line"><strong>Generation:</strong> ${sb.generation_total.toFixed(1)} GW</div>
     <div class="line">Renewables: ${sb.supply.zvc.toFixed(1)} GW</div>
+    ${(sb.supply.nuclear || 0) > 0.01 ? `<div class="line">Nuclear: ${sb.supply.nuclear.toFixed(1)} GW</div>` : ""}
     <div class="line">Gas: ${sb.supply.gas.toFixed(1)} GW</div>
     <div class="line">Storage: ${sb.supply.storage_discharge.toFixed(1)} GW</div>
     ${sb.curtailed > 0.01 ? `<div class="line">Curtailed: ${sb.curtailed.toFixed(1)} GW</div>` : ""}
@@ -1099,6 +1132,7 @@ function renderResults(data, inputs) {
   const avgPrice = totalGWh > 0 ? weightedPrice / totalGWh : 0;
   m += `<div class="metric-card"><div class="value" style="font-size:17px;color:var(--success)">${fmtCur(avgPrice)}/MWh</div><div class="label">Load-Weighted Avg Price</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.zvc)}</div><div class="label">Renewables Capacity</div></div>`;
+  m += `<div class="metric-card"><div class="value">${fmtGW(caps.nuclear || 0)}</div><div class="label">Nuclear Capacity</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.gas)}</div><div class="label">Gas Capacity</div></div>`;
   m += `<div class="metric-card"><div class="value">${fmtGW(caps.storage_power)}</div><div class="label">Storage Power</div></div>`;
   m += `<div class="metric-card"><div class="value">${caps.storage_energy.toFixed(0)} GWh</div><div class="label">Storage Energy</div></div>`;
@@ -1178,6 +1212,8 @@ function renderResults(data, inputs) {
     t += `<table><thead><tr><th>Supply</th><th>Dispatch (GW)</th><th>Available (GW)</th></tr></thead><tbody>`;
     const zvcAvail = (caps.zvc * sb.zvc_availability / 100).toFixed(2);
     t += `<tr><td>Renewables</td><td>${sb.supply.zvc.toFixed(2)}</td><td>${zvcAvail}</td></tr>`;
+    const nucAvail = ((caps.nuclear || 0) * (sb.nuclear_availability || 100) / 100).toFixed(2);
+    t += `<tr><td>Nuclear</td><td>${(sb.supply.nuclear || 0).toFixed(2)}</td><td>${nucAvail}</td></tr>`;
     t += `<tr><td>Gas Peaker</td><td>${sb.supply.gas.toFixed(2)}</td><td>${caps.gas.toFixed(2)}</td></tr>`;
     t += `<tr><td>Storage Discharge</td><td>${sb.supply.storage_discharge.toFixed(2)}</td><td>${caps.storage_power.toFixed(2)}</td></tr>`;
     t += `<tr><td>Storage Charge</td><td>${sb.supply.storage_charge.toFixed(2)}</td><td></td></tr>`;

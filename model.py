@@ -7,7 +7,7 @@ within-block storage arbitrage: charge when renewables are plentiful, discharge
 when scarce.
 
 The model simultaneously determines:
-  • optimal capacity investment (ZVC, gas peaker, storage)
+  • optimal capacity investment (ZVC, nuclear, gas peaker, storage)
   • dispatch in every sub-block
 
 Shadow prices on sub-block energy-balance constraints give clearing prices.
@@ -77,6 +77,10 @@ def default_inputs() -> dict[str, Any]:
 
     supply = {
         "zvc_capital_cost": 450,
+        "nuclear_capital_cost": 550,
+        "nuclear_variable_cost": 10,
+        "nuclear_planned_outage": 10,
+        "nuclear_peak_unavail": 5,
         "gas_capital_cost": 40,
         "gas_variable_cost": 80,
         "carbon_price": 50,
@@ -188,8 +192,13 @@ def _solve_core(inputs: dict[str, Any], *,
     def sb_key(b, i):
         return (b, i)
 
+    nuclear_vc = supply.get("nuclear_variable_cost", 10)
+    nuc_planned = max(0, min(100, supply.get("nuclear_planned_outage", 10))) / 100.0
+    nuc_peak_unavail = max(0, min(100, supply.get("nuclear_peak_unavail", 5))) / 100.0
+
     # ── Capacity investment variables ────────────────────────────────────
     cap_zvc = pulp.LpVariable("cap_zvc", 0)
+    cap_nuc = pulp.LpVariable("cap_nuc", 0)
     cap_gas = pulp.LpVariable("cap_gas", 0)
     cap_sto_pw = pulp.LpVariable("cap_sto_pw", 0)
     cap_sto_en = pulp.LpVariable("cap_sto_en", 0)
@@ -210,12 +219,14 @@ def _solve_core(inputs: dict[str, Any], *,
         )
 
     zvc = {}
+    nuc = {}
     gas = {}
     sto_dis = {}
     sto_chg = {}
     for b, i, lbl, sh, av in sub_blocks:
         k = sb_key(b, i)
         zvc[k] = pulp.LpVariable(f"zvc_{_s(b)}_{i}", 0)
+        nuc[k] = pulp.LpVariable(f"nuc_{_s(b)}_{i}", 0)
         gas[k] = pulp.LpVariable(f"gas_{_s(b)}_{i}", 0)
         sto_dis[k] = pulp.LpVariable(f"sdis_{_s(b)}_{i}", 0)
         sto_chg[k] = pulp.LpVariable(f"schg_{_s(b)}_{i}", 0)
@@ -279,6 +290,7 @@ def _solve_core(inputs: dict[str, Any], *,
         for t in demand_tiers[b]:
             obj.append(ENERGY_CONV * sh * t["voll"] * served[b, i, t["name"]])
         obj.append(ENERGY_CONV * sh * expandable[b]["value"] * expand[b, i])
+        obj.append(-ENERGY_CONV * sh * nuclear_vc * nuc[k])
         obj.append(-ENERGY_CONV * sh * gas_vc * gas[k])
 
     for idx_b, b in enumerate(blocks):
@@ -294,6 +306,7 @@ def _solve_core(inputs: dict[str, Any], *,
                     )
 
     obj.append(-CAPITAL_CONV * supply["zvc_capital_cost"] * cap_zvc)
+    obj.append(-CAPITAL_CONV * supply.get("nuclear_capital_cost", 550) * cap_nuc)
     obj.append(-CAPITAL_CONV * supply["gas_capital_cost"] * cap_gas)
     obj.append(-CAPITAL_CONV * storage_power_cost * cap_sto_pw)
     obj.append(-CAPITAL_CONV * storage_energy_cost * cap_sto_en)
@@ -317,7 +330,7 @@ def _solve_core(inputs: dict[str, Any], *,
                     shifted_in_vars.append(shift_in[b_src, t["name"], b, i])
 
         total_dem = dem + pulp.lpSum(shifted_in_vars) + expand[b, i]
-        total_sup = zvc[k] + gas[k] + sto_dis[k] - sto_chg[k]
+        total_sup = zvc[k] + nuc[k] + gas[k] + sto_dis[k] - sto_chg[k]
 
         cname = f"eb_{_s(b)}_{i}"
         prob.addConstraint(total_sup >= total_dem, name=cname)
@@ -366,9 +379,17 @@ def _solve_core(inputs: dict[str, Any], *,
             ), f"tb_{_s(b)}_{i}_{t['name']}"
 
     # 3. Capacity constraints
+    nuc_avail = {}
+    for b, i, lbl, sh, av in sub_blocks:
+        nuc_af = 1.0 - nuc_planned
+        if b == blocks[0]:
+            nuc_af *= (1.0 - nuc_peak_unavail)
+        nuc_avail[b, i] = round(nuc_af, 6)
+
     for b, i, lbl, sh, av in sub_blocks:
         k = sb_key(b, i)
         prob += zvc[k] <= av * cap_zvc, f"czvc_{_s(b)}_{i}"
+        prob += nuc[k] <= nuc_avail[b, i] * cap_nuc, f"cnuc_{_s(b)}_{i}"
         prob += gas[k] <= cap_gas, f"cgas_{_s(b)}_{i}"
         prob += sto_dis[k] <= cap_sto_pw, f"cdis_{_s(b)}_{i}"
         prob += sto_chg[k] <= cap_sto_pw, f"cchg_{_s(b)}_{i}"
@@ -376,7 +397,7 @@ def _solve_core(inputs: dict[str, Any], *,
     # 3b. T&D capacity: peak network flow = total generation dispatched
     for b, i, lbl, sh, av in sub_blocks:
         k = sb_key(b, i)
-        prob += zvc[k] + gas[k] + sto_dis[k] <= cap_td, f"ctd_{_s(b)}_{i}"
+        prob += zvc[k] + nuc[k] + gas[k] + sto_dis[k] <= cap_td, f"ctd_{_s(b)}_{i}"
 
     # 3c. Storage duration: energy capacity = power capacity × duration
     prob += cap_sto_en == sto_duration * cap_sto_pw, "sto_duration"
@@ -440,6 +461,7 @@ def _solve_core(inputs: dict[str, Any], *,
 
     capacities = {
         "zvc": _v(cap_zvc),
+        "nuclear": _v(cap_nuc),
         "gas": _v(cap_gas),
         "storage_power": _v(cap_sto_pw),
         "storage_energy": _v(cap_sto_en),
@@ -448,6 +470,7 @@ def _solve_core(inputs: dict[str, Any], *,
 
     annual_capital = {
         "zvc": round(pulp.value(cap_zvc) * supply["zvc_capital_cost"] * CAPITAL_CONV, 2),
+        "nuclear": round(pulp.value(cap_nuc) * supply.get("nuclear_capital_cost", 550) * CAPITAL_CONV, 2),
         "gas": round(pulp.value(cap_gas) * supply["gas_capital_cost"] * CAPITAL_CONV, 2),
         "storage_power": round(pulp.value(cap_sto_pw) * storage_power_cost * CAPITAL_CONV, 2),
         "storage_energy": round(pulp.value(cap_sto_en) * storage_energy_cost * CAPITAL_CONV, 2),
@@ -465,6 +488,7 @@ def _solve_core(inputs: dict[str, Any], *,
         d["label"] = lbl
         d["hours"] = round(sh, 1)
         d["zvc_availability"] = round(av * 100, 1)
+        d["nuclear_availability"] = round(nuc_avail[b, i] * 100, 1)
         d["price"] = sb_prices[b, i]
 
         d["demand_tiers"] = []
@@ -516,6 +540,7 @@ def _solve_core(inputs: dict[str, Any], *,
 
         d["supply"] = {
             "zvc": _v(zvc[k]),
+            "nuclear": _v(nuc[k]),
             "gas": _v(gas[k]),
             "storage_discharge": _v(sto_dis[k]),
             "storage_charge": _v(sto_chg[k]),
@@ -576,6 +601,7 @@ def _solve_core(inputs: dict[str, Any], *,
         for t in demand_tiers[b]:
             total_cv += ENERGY_CONV * sh * t["voll"] * pulp.value(served[b, i, t["name"]])
         total_cv += ENERGY_CONV * sh * expandable[b]["value"] * pulp.value(expand[b, i])
+        total_vc += ENERGY_CONV * sh * nuclear_vc * pulp.value(nuc[k])
         total_vc += ENERGY_CONV * sh * gas_vc * pulp.value(gas[k])
 
     seen_shifts = set()
