@@ -229,8 +229,8 @@ tr:last-child td { border-bottom: none; }
 footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px; }
 
 body.beta-locked #beta-content {
-  filter: grayscale(0.45) blur(2px);
-  opacity: 0.35;
+  filter: blur(2px);
+  opacity: 0.4;
   pointer-events: none;
   user-select: none;
 }
@@ -266,11 +266,6 @@ body.beta-locked #beta-content {
   font-size: 13px; color: var(--text); margin-top: 14px;
 }
 .beta-note a { color: var(--accent-dark); font-weight: 600; }
-.beta-error {
-  display: none; margin-top: 10px; font-size: 13px; color: #991b1b;
-  background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px;
-}
-
 /* Chat panel */
 #chat-toggle {
   position: fixed; bottom: 16px; right: 16px; z-index: 1001;
@@ -377,7 +372,7 @@ body.beta-locked #beta-content {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 </head>
-<body class="{% if beta_required and not beta_authorized %}beta-locked{% endif %}">
+<body class="beta-locked" id="page-body">
 
 <div id="beta-content">
 
@@ -791,30 +786,22 @@ body.beta-locked #beta-content {
 
 </div>
 
-{% if beta_required and not beta_authorized %}
 <div id="beta-overlay">
   <div class="beta-modal">
-    <h2>Beta Access Required</h2>
-    <p>This model is currently in beta. Please enter the password you were given to access it.</p>
-    <label for="beta-password" style="margin-bottom:6px;">Beta Password</label>
-    <input type="password" id="beta-password" placeholder="Enter password"
-           onkeydown="if(event.key==='Enter'){event.preventDefault();submitBetaAccess();}"/>
-    <div class="beta-actions">
-      <button onclick="submitBetaAccess()">Access Beta Model</button>
-    </div>
-    <div class="beta-error" id="beta-error"></div>
+    <h2>Welcome to Peaky Flexers</h2>
+    <p>This is a beta project. Feedback welcome!</p>
     <p class="beta-note">
-      If you haven't been given beta access yet, please <a href="mailto:{{ contact_email }}">get in touch</a>.
+      Please <a href="mailto:{{ contact_email }}">get in touch</a> with comments or suggestions.
     </p>
+    <div class="beta-actions">
+      <button onclick="dismissBetaNotice()">Continue</button>
+    </div>
   </div>
 </div>
-{% endif %}
 
 <script>
 const DEFAULTS = {{ defaults | safe }};
 const HH_DEFAULTS = {{ hh_defaults | safe }};
-const BETA_REQUIRED = {{ 'true' if beta_required else 'false' }};
-const BETA_AUTHORIZED = {{ 'true' if beta_authorized else 'false' }};
 
 function getCur() { return document.getElementById("currency-select").value; }
 
@@ -1458,42 +1445,13 @@ function dlDetailCSV() {
 
 init();
 
-async function submitBetaAccess() {
-  const input = document.getElementById("beta-password");
-  const error = document.getElementById("beta-error");
-  if (!input) return;
-  error.style.display = "none";
-  const password = input.value.trim();
-  if (!password) {
-    error.textContent = "Please enter the beta password.";
-    error.style.display = "block";
-    return;
-  }
-  try {
-    const resp = await fetch("/beta_access", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({password}),
-    });
-    const contentType = resp.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      const text = await resp.text();
-      error.textContent = `Could not verify beta access: Server error (${resp.status}).`;
-      if (text) console.error("Non-JSON beta access response:", text.substring(0, 300));
-      error.style.display = "block";
-      return;
-    }
-    const data = await resp.json();
-    if (!resp.ok || data.error) {
-      error.textContent = data.reply || "Incorrect password.";
-      error.style.display = "block";
-      return;
-    }
-    window.location.reload();
-  } catch (err) {
-    error.textContent = "Could not verify beta access: " + err.message;
-    error.style.display = "block";
-  }
+function dismissBetaNotice() {
+  document.getElementById("beta-overlay").style.display = "none";
+  document.getElementById("page-body").classList.remove("beta-locked");
+  sessionStorage.setItem("beta_dismissed", "1");
+}
+if (sessionStorage.getItem("beta_dismissed") === "1") {
+  dismissBetaNotice();
 }
 
 // ── AI Chat ────────────────────────────────────────────────────────────
@@ -1527,8 +1485,7 @@ function toggleChat() {
 }
 
 // Load chat models
-if (!BETA_REQUIRED || BETA_AUTHORIZED) {
-  fetch("/chat_models").then(r => r.json()).then(data => {
+{ fetch("/chat_models").then(r => r.json()).then(data => {
     const sel = document.getElementById("chat-model");
     for (const [id, name] of Object.entries(data.models || {})) {
       const opt = document.createElement("option");
