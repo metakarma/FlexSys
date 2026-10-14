@@ -655,6 +655,13 @@ body.beta-locked #beta-content {
       <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">All energy is traded at the sub-block shadow price. T&amp;D is paid a network charge on every MWh injected (the shadow price of the T&amp;D capacity constraint), which is deducted from what generators and discharging storage receive. Storage pays the full price for charging energy. Shortfall = total revenue &minus; total cost (negative means under-recovery).</p>
       <div class="results-grid" id="cost-recovery-metrics"></div>
       <div id="cost-recovery-table" style="margin-top:16px;"></div>
+      <h3 style="margin:20px 0 4px;font-size:15px;">Revenue by Technology and Period</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 8px;">Annual revenue earned in each sub-block, stacked by technology. Hatched bars below zero are what storage pays for its charging energy.</p>
+      <div class="plot-container" id="plot-revenue-period"></div>
+      <div class="dl-bar">
+        <button class="dl-btn" onclick="dlPlotPNG('plot-revenue-period','revenue_by_period')">PNG</button>
+        <button class="dl-btn" onclick="dlRevenueByPeriodCSV()">CSV</button>
+      </div>
       <div class="dl-bar">
         <button class="dl-btn" onclick="dlMetricsCSV('cost-recovery-metrics','cost_recovery_summary')">CSV (summary)</button>
         <button class="dl-btn" onclick="dlTableCSV(document.querySelector('#cost-recovery-table table'),'cost_recovery_by_technology')">CSV (by technology)</button>
@@ -1286,6 +1293,8 @@ function renderResults(data, inputs) {
   document.getElementById("storage-economics").innerHTML = seHtml;
 
   renderCostRecovery(data.cost_recovery);
+  document.getElementById("plot-revenue-period").innerHTML =
+    data.plots.revenue_by_period ? `<img src="${data.plots.revenue_by_period}" alt="Revenue by period"/>` : "";
 
   // Detail tables — per sub-block
   let t = "";
@@ -1365,6 +1374,20 @@ function renderCostRecovery(cr) {
   const od = cr.operating_cost_detail || {};
   t += `<p style="font-size:12px;color:var(--muted);margin-top:8px;">Operating cost detail: nuclear ${fmtCurM(od.nuclear || 0)}, gas fuel ${fmtCurM(od.gas_fuel || 0)}, gas carbon ${fmtCurM(od.gas_carbon || 0)}. T&amp;D revenue is the network charge &times; MWh injected; generator and storage revenues are net of it, so no revenue is counted twice.</p>`;
   tEl.innerHTML = t;
+}
+
+function dlRevenueByPeriodCSV() {
+  if (!lastResults) return;
+  const techs = [["zvc", "Renewables"], ["nuclear", "Nuclear"], ["gas", "Gas"], ["storage", "Storage"], ["td", "T&D"]];
+  const rows = [["Block", "Sub-block", "Hours", "Price", ...techs.map(t => t[1]), "Total"].join(",")];
+  lastResults.sub_blocks.forEach(sb => {
+    const r = sb.revenue || {};
+    const vals = techs.map(([k]) => (r[k] || 0).toFixed(2));
+    const total = techs.reduce((s, [k]) => s + (r[k] || 0), 0).toFixed(2);
+    rows.push([sb.block, sb.label, sb.hours, sb.price, ...vals, total].join(","));
+  });
+  const blob = new Blob([rows.join("\n")], {type: "text/csv"});
+  _dlLink(URL.createObjectURL(blob), "revenue_by_period.csv");
 }
 
 function renderHouseholdResults(hh, plotSrc) {

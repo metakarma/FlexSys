@@ -102,6 +102,7 @@ A results section values all energy at the sub-block shadow price. T&D earns a *
 - **Total annual revenue** — energy sold × shadow price × hours
 - **Total annual cost** — annualised capital cost plus operating cost (nuclear variable cost, gas fuel, gas carbon cost)
 - **Shortfall** — total revenue minus total cost (negative means costs are under-recovered)
+- **Revenue by technology and period** — a stacked bar chart (with CSV download) of revenue by technology, including T&D, for each sub-block
 
 With endogenous capacity, each technology (including T&D) recovers its cost at shadow prices up to rounding (zero-profit long-run equilibrium). When no renewables are built, the minimum-price rule lowers revenues and a real shortfall appears.
 

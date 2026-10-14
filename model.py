@@ -654,12 +654,17 @@ def _solve_core(inputs: dict[str, Any], *,
         e_net = ENERGY_CONV * sh * (sb_prices[b, i] - net_chg)
         injected = (pulp.value(zvc[k]) + pulp.value(nuc[k])
                     + pulp.value(gas[k]) + pulp.value(sto_dis[k]))
-        rev["zvc"] += e_net * pulp.value(zvc[k])
-        rev["nuclear"] += e_net * pulp.value(nuc[k])
-        rev["gas"] += e_net * pulp.value(gas[k])
-        rev["storage"] += (e_net * pulp.value(sto_dis[k])
-                           - e_price * pulp.value(sto_chg[k]))
-        rev["td"] += ENERGY_CONV * sh * net_chg * injected
+        sb_rev = {
+            "zvc": e_net * pulp.value(zvc[k]),
+            "nuclear": e_net * pulp.value(nuc[k]),
+            "gas": e_net * pulp.value(gas[k]),
+            "storage": (e_net * pulp.value(sto_dis[k])
+                        - e_price * pulp.value(sto_chg[k])),
+            "td": ENERGY_CONV * sh * net_chg * injected,
+        }
+        for tech, v in sb_rev.items():
+            rev[tech] += v
+        sb_details[b, i]["revenue"] = {t: round(v, 2) for t, v in sb_rev.items()}
         opex["nuclear"] += ENERGY_CONV * sh * nuclear_vc * pulp.value(nuc[k])
         opex["gas_fuel"] += ENERGY_CONV * sh * supply["gas_variable_cost"] * pulp.value(gas[k])
         opex["gas_carbon"] += ENERGY_CONV * sh * carbon_adder * pulp.value(gas[k])

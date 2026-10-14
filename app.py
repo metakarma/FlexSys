@@ -266,6 +266,7 @@ def generate_plots(inputs: dict, results: dict, cur: str = "$") -> dict:
     plots["ldc"], plots["ldc_meta"] = _plot_ldc(inputs, results, cur)
     plots["price_duration"], plots["price_duration_meta"] = _plot_price_duration(inputs, results, cur)
     plots["capacity"] = _plot_capacity(results, cur)
+    plots["revenue_by_period"] = _plot_revenue_by_period(results, cur)
     plots["dispatch"] = _plot_dispatch(inputs, results, cur)
     plots["dispatch_gwh"] = _plot_dispatch_gwh(inputs, results, cur)
     plots["storage"] = _plot_storage(inputs, results)
@@ -471,6 +472,66 @@ def _plot_price_duration(inputs: dict, results: dict, cur: str = "$") -> tuple[s
     sns.despine(left=True, bottom=True)
     meta = _duration_plot_meta(fig, ax, sorted_subs)
     return _fig_to_base64(fig), meta
+
+
+REVENUE_TECHS = [
+    ("zvc", "Renewables", GEN_COLORS["Renewables"]),
+    ("nuclear", "Nuclear", GEN_COLORS["Nuclear"]),
+    ("gas", "Gas", GEN_COLORS["Gas"]),
+    ("storage", "Storage", GEN_COLORS["Storage"]),
+    ("td", "T&D", "#8B5CF6"),
+]
+
+
+def _plot_revenue_by_period(results: dict, cur: str = "$") -> str:
+    """Stacked revenue (£m) by technology for each sub-block, in LDC order."""
+    from matplotlib.patches import Patch
+    subs = results["sub_blocks"]
+    x = np.arange(len(subs))
+    labels = [f"{sb['block']}\n{sb['label']}" for sb in subs]
+
+    fig, ax = plt.subplots(figsize=(12, 5.5))
+    pos_bottom = np.zeros(len(subs))
+    neg_bottom = np.zeros(len(subs))
+    used = []
+    for key, name, color in REVENUE_TECHS:
+        vals = np.array([sb.get("revenue", {}).get(key, 0.0) / 1e6 for sb in subs])
+        if np.all(np.abs(vals) < 0.05):
+            continue
+        used.append((name, color))
+        pos = np.where(vals > 0, vals, 0)
+        neg = np.where(vals < 0, vals, 0)
+        ax.bar(x, pos, bottom=pos_bottom, color=color, edgecolor="white", width=0.65)
+        ax.bar(x, neg, bottom=neg_bottom, color=color, edgecolor="white", width=0.65,
+               hatch="//", alpha=0.75)
+        pos_bottom += pos
+        neg_bottom += neg
+
+    totals = pos_bottom + neg_bottom
+    span = max(pos_bottom.max(initial=0), 1)
+    for xi, tot, top in zip(x, totals, pos_bottom):
+        ax.text(xi, top + span * 0.015, f"{cur}{tot:,.0f}m",
+                ha="center", va="bottom", fontsize=9, fontweight="bold")
+
+    ax.axhline(0, color="grey", linewidth=0.8)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontsize=8)
+    for tick, sb in zip(ax.get_xticklabels(), subs):
+        tick.set_color(BLOCK_COLORS.get(sb["block"], "#374151"))
+    ax.set_ylabel(f"Annual revenue ({cur}m)")
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{cur}{v:,.0f}m"))
+    ax.set_title("Revenue by Technology and Period", fontsize=13, fontweight="bold")
+
+    handles = [Patch(fc=c, ec="white", label=n) for n, c in used]
+    if np.any(neg_bottom < -0.05):
+        handles.append(Patch(fc="#9CA3AF", ec="white", hatch="//",
+                             label="Below zero: storage charging cost"))
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.14),
+              ncol=len(handles), fontsize=9, frameon=False)
+    ax.set_ylim(min(neg_bottom.min(initial=0) * 1.15, 0), span * 1.1)
+    sns.despine(left=True, bottom=True)
+    fig.tight_layout()
+    return _fig_to_base64(fig)
 
 
 def _plot_capacity(results: dict, cur: str = "$") -> str:
