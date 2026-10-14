@@ -352,6 +352,10 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>The <strong>market-clearing prices</strong> are not directly chosen. They emerge as shadow prices on the energy-balance constraints&mdash;they tell you the marginal value to society of one additional MWh of supply in each sub-block. In an efficient market, these would be the wholesale electricity prices.</p>
 
+<div class="callout">
+  <strong>When no renewables are built:</strong> the Low and High Renewables sub-blocks in each block become physically identical. The solver then pins down only the block&rsquo;s total scarcity value (price premium &times; hours), and can split it arbitrarily between the two sub-blocks (for example &pound;105 and &pound;65 for what is really the same situation). The model re-solves with demand shifted evenly into both sub-blocks, then sets both prices to their <strong>hours-weighted average</strong>. Competition makes identical hours trade at one price, and free entry and exit set that price at the level where capacity just recovers its cost &mdash; which the weighted average preserves.
+</div>
+
 <h3 id="formal">3.2 The Formal Problem</h3>
 
 <p>For those who want the mathematics, here is the LP formulation. The model maximises:</p>
@@ -417,7 +421,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 <p>A table breaks the same figures down by technology. Below it, the <strong>Revenue by Technology and Period</strong> chart shows the revenue earned in each sub-block, stacked by technology (including T&amp;D). The figure above each bar is that period&rsquo;s net total. Hatched bars below zero are what storage pays for charging energy. The chart shows <em>when</em> each technology earns its money: renewables earn most of theirs across the many hours of the shoulder and low-demand periods, while T&amp;D only earns in periods where network capacity is tight.</p>
 
 <div class="callout">
-  <strong>Why the total is close to zero:</strong> Because capacity is chosen optimally and prices are the LP shadow prices, the model is in a long-run competitive equilibrium: scarcity prices in tight periods earn exactly enough to pay for the capacity that is built. This is the classic &ldquo;peak-load pricing&rdquo; result. It holds for each technology individually as well as in total, including T&amp;D, whose network-charge revenue exactly equals its annualised cost. Small non-zero totals are due to price rounding. When no renewables are built, the model applies the minimum-price rule in each block (see Prices), which lowers revenues; in those cases a genuine shortfall will appear.
+  <strong>Why the total is close to zero:</strong> Because capacity is chosen optimally and prices are the LP shadow prices, the model is in a long-run competitive equilibrium: scarcity prices in tight periods earn exactly enough to pay for the capacity that is built. This is the classic &ldquo;peak-load pricing&rdquo; result. It holds for each technology individually as well as in total, including T&amp;D, whose network-charge revenue exactly equals its annualised cost. Small non-zero totals are due to price rounding.
 </div>
 
 <!-- ---- Capacity ---- -->

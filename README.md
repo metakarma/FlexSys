@@ -84,7 +84,7 @@ Expandable demand activates when the price drops below its value:
 
 ### Prices
 
-Shadow prices on the energy-balance constraints give **market-clearing prices** for each sub-block (6 prices total). When renewables capacity is zero and sub-blocks are identical, the model uses the minimum shadow price to reflect competitive price formation.
+Shadow prices on the energy-balance constraints give **market-clearing prices** for each sub-block (6 prices total). When renewables capacity is zero, the two sub-blocks in each block are identical and the solver splits the block's scarcity value between them arbitrarily. The model then sets both sub-blocks to the hours-weighted average price, which gives one price for identical hours while preserving the scarcity revenue that pays for capacity.
 
 ### Monetary units
 
@@ -104,7 +104,7 @@ A results section values all energy at the sub-block shadow price. T&D earns a *
 - **Shortfall** — total revenue minus total cost (negative means costs are under-recovered)
 - **Revenue by technology and period** — a stacked bar chart (with CSV download) of revenue by technology, including T&D, for each sub-block
 
-With endogenous capacity, each technology (including T&D) recovers its cost at shadow prices up to rounding (zero-profit long-run equilibrium). When no renewables are built, the minimum-price rule lowers revenues and a real shortfall appears.
+With endogenous capacity, each technology (including T&D) recovers its cost at shadow prices up to rounding (zero-profit long-run equilibrium).
 
 ## Household Bill Optimisation (Optional)
 

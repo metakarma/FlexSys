@@ -437,15 +437,17 @@ def _solve_core(inputs: dict[str, Any], *,
         sb_prices[b, i] = round(shadow / (ENERGY_CONV * sh), 2) if sh > 0 else 0.0
 
     # When sub-blocks are identical (block_level_shift), LP dual degeneracy
-    # can split the shadow value arbitrarily between sub-blocks.
-    # Competitive pressures drive the clearing price to the minimum.
+    # splits the block's scarcity value arbitrarily between sub-blocks; only
+    # the hours-weighted total is pinned down.  A uniform hours-weighted
+    # average preserves that total, so capacity still recovers its cost.
     if block_level_shift:
         for b in blocks:
-            b_subs = [i for bb, i, *_ in sub_blocks if bb == b]
-            if len(b_subs) >= 2:
-                min_p = min(sb_prices[b, i] for i in b_subs)
-                for i in b_subs:
-                    sb_prices[b, i] = min_p
+            b_subs = [(i, sh) for bb, i, _l, sh, _a in sub_blocks if bb == b]
+            tot_h = sum(sh for _, sh in b_subs)
+            if len(b_subs) >= 2 and tot_h > 0:
+                avg_p = round(sum(sb_prices[b, i] * sh for i, sh in b_subs) / tot_h, 2)
+                for i, _ in b_subs:
+                    sb_prices[b, i] = avg_p
 
     # Network charge (per MWh injected) = shadow price of the T&D capacity
     # constraint.  Summed over sub-blocks it equals the T&D capital cost per GW.
