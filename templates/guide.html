@@ -148,6 +148,7 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
     <li><a href="#outputs">Reading the Outputs</a>
       <ol style="margin-top:4px;">
         <li><a href="#out-summary">Market Equilibrium Summary</a></li>
+        <li><a href="#out-cost-recovery">Costs, Revenues &amp; Cost Recovery</a></li>
         <li><a href="#out-capacity">Optimal Capacity Mix</a></li>
         <li><a href="#out-input-ldc">Input Load Duration Curve</a></li>
         <li><a href="#out-gen-ldc">Generation Duration Curve</a></li>
@@ -396,6 +397,21 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <div class="callout">
   <strong>What to look for:</strong> If prices are very high in one sub-block, the system is capacity-constrained there. If prices are very similar everywhere, there may be excess capacity or very effective storage/shifting smoothing prices across periods.
+</div>
+
+<!-- ---- Cost recovery ---- -->
+<h3 id="out-cost-recovery">4.1b Costs, Revenues &amp; Cost Recovery</h3>
+
+<p>This section asks: <em>if every MWh were bought and sold at the sub-block clearing price, would the money collected pay for the system?</em></p>
+<ul>
+  <li><strong>Total annual revenue</strong> &mdash; for each technology, energy sold in each sub-block &times; that sub-block&rsquo;s shadow price &times; hours. Storage pays the shadow price for the energy it charges and is paid it for the energy it discharges.</li>
+  <li><strong>Total annual cost</strong> &mdash; annualised capital cost of every technology (including T&amp;D) plus operating costs: nuclear variable cost, gas fuel cost, and gas carbon cost.</li>
+  <li><strong>Shortfall</strong> &mdash; total revenue minus total cost. A negative number means costs are not fully recovered from energy sales.</li>
+</ul>
+<p>A table breaks the same figures down by technology.</p>
+
+<div class="callout">
+  <strong>Why the total is close to zero:</strong> Because capacity is chosen optimally and prices are the LP shadow prices, the model is in a long-run competitive equilibrium: scarcity prices in tight periods earn exactly enough to pay for the capacity that is built. This is the classic &ldquo;peak-load pricing&rdquo; result. T&amp;D earns no direct energy revenue, so it shows a shortfall on its own line; the matching surplus appears with the generators and storage, because the network&rsquo;s scarcity value is embedded in peak energy prices. Small non-zero totals are due to price rounding.
 </div>
 
 <!-- ---- Capacity ---- -->

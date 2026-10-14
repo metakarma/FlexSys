@@ -622,6 +622,61 @@ def _solve_core(inputs: dict[str, Any], *,
                     * qty_src
                 )
 
+    # Cost recovery: all energy traded at the sub-block shadow price.
+    # Storage buys its charging energy and sells its discharge.
+    rev = {"zvc": 0.0, "nuclear": 0.0, "gas": 0.0, "storage": 0.0}
+    opex = {"nuclear": 0.0, "gas_fuel": 0.0, "gas_carbon": 0.0}
+    for b, i, lbl, sh, av in sub_blocks:
+        k = sb_key(b, i)
+        e = ENERGY_CONV * sh * sb_prices[b, i]
+        rev["zvc"] += e * pulp.value(zvc[k])
+        rev["nuclear"] += e * pulp.value(nuc[k])
+        rev["gas"] += e * pulp.value(gas[k])
+        rev["storage"] += e * (pulp.value(sto_dis[k]) - pulp.value(sto_chg[k]))
+        opex["nuclear"] += ENERGY_CONV * sh * nuclear_vc * pulp.value(nuc[k])
+        opex["gas_fuel"] += ENERGY_CONV * sh * supply["gas_variable_cost"] * pulp.value(gas[k])
+        opex["gas_carbon"] += ENERGY_CONV * sh * carbon_adder * pulp.value(gas[k])
+
+    total_revenue = sum(rev.values())
+    total_opex = sum(opex.values())
+    total_cost = annual_capital["total"] + total_opex
+
+    capex_by_tech = {
+        "zvc": annual_capital["zvc"],
+        "nuclear": annual_capital["nuclear"],
+        "gas": annual_capital["gas"],
+        "storage": annual_capital["storage_power"] + annual_capital["storage_energy"],
+        "td": annual_capital["td"],
+    }
+    opex_by_tech = {
+        "zvc": 0.0,
+        "nuclear": opex["nuclear"],
+        "gas": opex["gas_fuel"] + opex["gas_carbon"],
+        "storage": 0.0,
+        "td": 0.0,
+    }
+    rev_by_tech = {**rev, "td": 0.0}
+
+    cost_recovery = {
+        "by_technology": {
+            tech: {
+                "revenue": round(rev_by_tech[tech], 2),
+                "capital_cost": round(capex_by_tech[tech], 2),
+                "operating_cost": round(opex_by_tech[tech], 2),
+                "total_cost": round(capex_by_tech[tech] + opex_by_tech[tech], 2),
+                "shortfall": round(
+                    rev_by_tech[tech] - capex_by_tech[tech] - opex_by_tech[tech], 2),
+            }
+            for tech in ("zvc", "nuclear", "gas", "storage", "td")
+        },
+        "operating_cost_detail": {k: round(v, 2) for k, v in opex.items()},
+        "total_capital_cost": annual_capital["total"],
+        "total_operating_cost": round(total_opex, 2),
+        "total_cost": round(total_cost, 2),
+        "total_revenue": round(total_revenue, 2),
+        "shortfall": round(total_revenue - total_cost, 2),
+    }
+
     # ── Assemble results ─────────────────────────────────────────────────
     sb_list = []
     for b, i, *_ in sub_blocks:
@@ -642,6 +697,7 @@ def _solve_core(inputs: dict[str, Any], *,
         "total_variable_cost": round(total_vc, 2),
         "total_capital_cost": annual_capital["total"],
         "net_welfare": round(total_cv - total_vc - annual_capital["total"], 2),
+        "cost_recovery": cost_recovery,
     }
     return results
 

@@ -651,6 +651,17 @@ body.beta-locked #beta-content {
     </div>
 
     <div class="card">
+      <h2><span class="dot" style="background:var(--success)"></span> Costs, Revenues &amp; Cost Recovery</h2>
+      <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">All energy is traded at the sub-block shadow price. Storage pays for charging energy and is paid for discharged energy. Shortfall = total revenue &minus; total cost (negative means under-recovery).</p>
+      <div class="results-grid" id="cost-recovery-metrics"></div>
+      <div id="cost-recovery-table" style="margin-top:16px;"></div>
+      <div class="dl-bar">
+        <button class="dl-btn" onclick="dlMetricsCSV('cost-recovery-metrics','cost_recovery_summary')">CSV (summary)</button>
+        <button class="dl-btn" onclick="dlTableCSV(document.querySelector('#cost-recovery-table table'),'cost_recovery_by_technology')">CSV (by technology)</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2><span class="dot" style="background:var(--accent)"></span> Optimal Capacity Mix</h2>
       <div class="plot-container" id="plot-capacity"></div>
       <div class="dl-bar"><button class="dl-btn" onclick="dlPlotPNG('plot-capacity','capacity_mix')">PNG</button></div>
@@ -1274,6 +1285,8 @@ function renderResults(data, inputs) {
   }
   document.getElementById("storage-economics").innerHTML = seHtml;
 
+  renderCostRecovery(data.cost_recovery);
+
   // Detail tables — per sub-block
   let t = "";
   subs.forEach(sb => {
@@ -1322,6 +1335,36 @@ function renderResults(data, inputs) {
 
   document.getElementById("results").style.display = "block";
   document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+}
+
+function renderCostRecovery(cr) {
+  const mEl = document.getElementById("cost-recovery-metrics");
+  const tEl = document.getElementById("cost-recovery-table");
+  if (!cr) { mEl.innerHTML = ""; tEl.innerHTML = ""; return; }
+
+  const sfColor = v => v < -0.5e6 ? "var(--danger)" : "var(--success)";
+  const card = (val, label, color) =>
+    `<div class="metric-card"><div class="value"${color ? ` style="color:${color}"` : ""}>${fmtCurM(val)}</div><div class="label">${label}</div></div>`;
+
+  let m = "";
+  m += card(cr.total_revenue, "Total Annual Revenue");
+  m += card(cr.total_capital_cost, "Annualised Capital Cost");
+  m += card(cr.total_operating_cost, "Operating Cost");
+  m += card(cr.total_cost, "Total Annual Cost");
+  m += card(cr.shortfall, "Shortfall (Revenue &minus; Cost)", sfColor(cr.shortfall));
+  mEl.innerHTML = m;
+
+  const names = {zvc: "Renewables", nuclear: "Nuclear", gas: "Gas Peaker", storage: "Storage", td: "T&amp;D"};
+  const cell = v => `<td>${fmtCurM(v)}</td>`;
+  let t = `<table><thead><tr><th>Technology</th><th>Revenue</th><th>Capital Cost</th><th>Operating Cost</th><th>Total Cost</th><th>Shortfall</th></tr></thead><tbody>`;
+  for (const [k, v] of Object.entries(cr.by_technology)) {
+    t += `<tr><td>${names[k] || k}</td>${cell(v.revenue)}${cell(v.capital_cost)}${cell(v.operating_cost)}${cell(v.total_cost)}<td style="color:${sfColor(v.shortfall)}">${fmtCurM(v.shortfall)}</td></tr>`;
+  }
+  t += `<tr style="font-weight:700"><td>Total</td>${cell(cr.total_revenue)}${cell(cr.total_capital_cost)}${cell(cr.total_operating_cost)}${cell(cr.total_cost)}<td style="color:${sfColor(cr.shortfall)}">${fmtCurM(cr.shortfall)}</td></tr>`;
+  t += `</tbody></table>`;
+  const od = cr.operating_cost_detail || {};
+  t += `<p style="font-size:12px;color:var(--muted);margin-top:8px;">Operating cost detail: nuclear ${fmtCurM(od.nuclear || 0)}, gas fuel ${fmtCurM(od.gas_fuel || 0)}, gas carbon ${fmtCurM(od.gas_carbon || 0)}. T&amp;D earns no direct energy revenue; its cost is recovered through scarcity rents embedded in peak energy prices, which accrue to generators and storage.</p>`;
+  tEl.innerHTML = t;
 }
 
 function renderHouseholdResults(hh, plotSrc) {

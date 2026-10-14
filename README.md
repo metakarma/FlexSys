@@ -6,9 +6,7 @@ A currency selector (£/$/€) at the top of the UI updates all labels and plot 
 
 ## Quick Start
 
-### Optional Beta Access Gate
-
-For a simple beta password layer, set the environment variable `PEAKY_BETA_PASSWORD`. When set, the model page is greyed out until the correct password is entered, and optimise/chat endpoints remain blocked until access is granted. The provided `docker-compose.yml` passes this environment variable through into the container. In production, also set a stable `PEAKY_SECRET_KEY` so Flask sessions can store beta-access state safely.
+On first visit in a browser session, a short notice explains that this is a beta project and invites feedback.
 
 ### With Docker
 
@@ -96,6 +94,16 @@ All welfare and cost outputs are reported in full annual currency units. Interna
 - **GW/GWh → kW/kWh** using `× 1,000,000` for all annual capital-cost terms
 
 This keeps the optimisation and reported totals consistent with the input units shown in the UI.
+
+### Costs, revenues & cost recovery
+
+A results section values all energy at the sub-block shadow price (storage pays for charging energy and is paid for discharge). It reports, in total and by technology:
+
+- **Total annual revenue** — energy sold × shadow price × hours
+- **Total annual cost** — annualised capital cost plus operating cost (nuclear variable cost, gas fuel, gas carbon cost)
+- **Shortfall** — total revenue minus total cost (negative means costs are under-recovered)
+
+T&D earns no direct energy revenue; its cost is recovered through scarcity rents in peak energy prices, which accrue to generators and storage. In a pure LP with endogenous capacity, total revenue at shadow prices covers total cost almost exactly (zero-profit long-run equilibrium), up to rounding.
 
 ## Household Bill Optimisation (Optional)
 
