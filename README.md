@@ -97,13 +97,13 @@ This keeps the optimisation and reported totals consistent with the input units 
 
 ### Costs, revenues & cost recovery
 
-A results section values all energy at the sub-block shadow price (storage pays for charging energy and is paid for discharge). It reports, in total and by technology:
+A results section values all energy at the sub-block shadow price. T&D earns a **network charge** per MWh injected, equal to the shadow price of the T&D capacity constraint; generators and discharging storage receive the clearing price minus that charge, so no revenue is double-counted. Charging storage pays the full price. It reports, in total and by technology:
 
 - **Total annual revenue** — energy sold × shadow price × hours
 - **Total annual cost** — annualised capital cost plus operating cost (nuclear variable cost, gas fuel, gas carbon cost)
 - **Shortfall** — total revenue minus total cost (negative means costs are under-recovered)
 
-T&D earns no direct energy revenue; its cost is recovered through scarcity rents in peak energy prices, which accrue to generators and storage. In a pure LP with endogenous capacity, total revenue at shadow prices covers total cost almost exactly (zero-profit long-run equilibrium), up to rounding.
+With endogenous capacity, each technology (including T&D) recovers its cost at shadow prices up to rounding (zero-profit long-run equilibrium). When no renewables are built, the minimum-price rule lowers revenues and a real shortfall appears.
 
 ## Household Bill Optimisation (Optional)
 

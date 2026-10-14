@@ -404,14 +404,20 @@ footer { text-align: center; padding: 32px 0; color: var(--muted); font-size: 13
 
 <p>This section asks: <em>if every MWh were bought and sold at the sub-block clearing price, would the money collected pay for the system?</em></p>
 <ul>
-  <li><strong>Total annual revenue</strong> &mdash; for each technology, energy sold in each sub-block &times; that sub-block&rsquo;s shadow price &times; hours. Storage pays the shadow price for the energy it charges and is paid it for the energy it discharges.</li>
+  <li><strong>Total annual revenue</strong> &mdash; energy sold in each sub-block &times; that sub-block&rsquo;s shadow price &times; hours. The price is split between the network and the energy suppliers:
+    <ul>
+      <li><strong>T&amp;D</strong> earns a <em>network charge</em> on every MWh injected onto the grid. The charge is the shadow price of the T&amp;D capacity constraint, so it is only non-zero in the sub-blocks where network capacity binds (typically the winter peak).</li>
+      <li><strong>Generators and discharging storage</strong> receive the clearing price <em>minus</em> the network charge. The same &pound; is therefore never counted for both T&amp;D and a generator.</li>
+      <li><strong>Charging storage</strong> pays the full clearing price.</li>
+    </ul>
+  </li>
   <li><strong>Total annual cost</strong> &mdash; annualised capital cost of every technology (including T&amp;D) plus operating costs: nuclear variable cost, gas fuel cost, and gas carbon cost.</li>
   <li><strong>Shortfall</strong> &mdash; total revenue minus total cost. A negative number means costs are not fully recovered from energy sales.</li>
 </ul>
 <p>A table breaks the same figures down by technology.</p>
 
 <div class="callout">
-  <strong>Why the total is close to zero:</strong> Because capacity is chosen optimally and prices are the LP shadow prices, the model is in a long-run competitive equilibrium: scarcity prices in tight periods earn exactly enough to pay for the capacity that is built. This is the classic &ldquo;peak-load pricing&rdquo; result. T&amp;D earns no direct energy revenue, so it shows a shortfall on its own line; the matching surplus appears with the generators and storage, because the network&rsquo;s scarcity value is embedded in peak energy prices. Small non-zero totals are due to price rounding.
+  <strong>Why the total is close to zero:</strong> Because capacity is chosen optimally and prices are the LP shadow prices, the model is in a long-run competitive equilibrium: scarcity prices in tight periods earn exactly enough to pay for the capacity that is built. This is the classic &ldquo;peak-load pricing&rdquo; result. It holds for each technology individually as well as in total, including T&amp;D, whose network-charge revenue exactly equals its annualised cost. Small non-zero totals are due to price rounding. When no renewables are built, the model applies the minimum-price rule in each block (see Prices), which lowers revenues; in those cases a genuine shortfall will appear.
 </div>
 
 <!-- ---- Capacity ---- -->

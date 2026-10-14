@@ -652,7 +652,7 @@ body.beta-locked #beta-content {
 
     <div class="card">
       <h2><span class="dot" style="background:var(--success)"></span> Costs, Revenues &amp; Cost Recovery</h2>
-      <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">All energy is traded at the sub-block shadow price. Storage pays for charging energy and is paid for discharged energy. Shortfall = total revenue &minus; total cost (negative means under-recovery).</p>
+      <p style="font-size:13px;color:var(--muted);margin:-8px 0 12px;">All energy is traded at the sub-block shadow price. T&amp;D is paid a network charge on every MWh injected (the shadow price of the T&amp;D capacity constraint), which is deducted from what generators and discharging storage receive. Storage pays the full price for charging energy. Shortfall = total revenue &minus; total cost (negative means under-recovery).</p>
       <div class="results-grid" id="cost-recovery-metrics"></div>
       <div id="cost-recovery-table" style="margin-top:16px;"></div>
       <div class="dl-bar">
@@ -1319,7 +1319,7 @@ function renderResults(data, inputs) {
     t += `<tr><td>Storage Charge</td><td>${sb.supply.storage_charge.toFixed(2)}</td><td></td></tr>`;
     t += `</tbody></table>`;
 
-    t += `<p style="font-size:13px;color:var(--muted);">Expandable: ${sb.expandable.activated.toFixed(2)} / ${sb.expandable.available} GW (value ${fmtCur(sb.expandable.value)}/MWh) &nbsp;|&nbsp; Storage level: ${sb.storage.level.toFixed(1)} GWh &nbsp;|&nbsp; Total served: ${sb.total_served_gw.toFixed(2)} GW</p>`;
+    t += `<p style="font-size:13px;color:var(--muted);">Expandable: ${sb.expandable.activated.toFixed(2)} / ${sb.expandable.available} GW (value ${fmtCur(sb.expandable.value)}/MWh) &nbsp;|&nbsp; Storage level: ${sb.storage.level.toFixed(1)} GWh &nbsp;|&nbsp; T&amp;D network charge: ${fmtCur(sb.network_charge || 0)}/MWh &nbsp;|&nbsp; Total served: ${sb.total_served_gw.toFixed(2)} GW</p>`;
     t += `<hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">`;
   });
   document.getElementById("detail-tables").innerHTML = t;
@@ -1363,7 +1363,7 @@ function renderCostRecovery(cr) {
   t += `<tr style="font-weight:700"><td>Total</td>${cell(cr.total_revenue)}${cell(cr.total_capital_cost)}${cell(cr.total_operating_cost)}${cell(cr.total_cost)}<td style="color:${sfColor(cr.shortfall)}">${fmtCurM(cr.shortfall)}</td></tr>`;
   t += `</tbody></table>`;
   const od = cr.operating_cost_detail || {};
-  t += `<p style="font-size:12px;color:var(--muted);margin-top:8px;">Operating cost detail: nuclear ${fmtCurM(od.nuclear || 0)}, gas fuel ${fmtCurM(od.gas_fuel || 0)}, gas carbon ${fmtCurM(od.gas_carbon || 0)}. T&amp;D earns no direct energy revenue; its cost is recovered through scarcity rents embedded in peak energy prices, which accrue to generators and storage.</p>`;
+  t += `<p style="font-size:12px;color:var(--muted);margin-top:8px;">Operating cost detail: nuclear ${fmtCurM(od.nuclear || 0)}, gas fuel ${fmtCurM(od.gas_fuel || 0)}, gas carbon ${fmtCurM(od.gas_carbon || 0)}. T&amp;D revenue is the network charge &times; MWh injected; generator and storage revenues are net of it, so no revenue is counted twice.</p>`;
   tEl.innerHTML = t;
 }
 

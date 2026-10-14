@@ -447,6 +447,23 @@ def _solve_core(inputs: dict[str, Any], *,
                 for i in b_subs:
                     sb_prices[b, i] = min_p
 
+    # Network charge (per MWh injected) = shadow price of the T&D capacity
+    # constraint.  Summed over sub-blocks it equals the T&D capital cost per GW.
+    net_charges = {}
+    for b, i, lbl, sh, av in sub_blocks:
+        con = prob.constraints[f"ctd_{_s(b)}_{i}"]
+        mu = abs(con.pi) if con.pi is not None else 0.0
+        net_charges[b, i] = mu / (ENERGY_CONV * sh) if sh > 0 else 0.0
+
+    if block_level_shift:
+        for b in blocks:
+            b_subs = [(i, sh) for bb, i, _l, sh, _a in sub_blocks if bb == b]
+            tot_h = sum(sh for _, sh in b_subs)
+            if len(b_subs) >= 2 and tot_h > 0:
+                avg = sum(net_charges[b, i] * sh for i, sh in b_subs) / tot_h
+                for i, _ in b_subs:
+                    net_charges[b, i] = avg
+
     block_prices = {}
     for b in blocks:
         total_h = sum(sh for bb, ii, ll, sh, aa in sub_blocks if bb == b)
@@ -490,6 +507,7 @@ def _solve_core(inputs: dict[str, Any], *,
         d["zvc_availability"] = round(av * 100, 1)
         d["nuclear_availability"] = round(nuc_avail[b, i] * 100, 1)
         d["price"] = sb_prices[b, i]
+        d["network_charge"] = round(net_charges[b, i], 2)
 
         d["demand_tiers"] = []
         for t in demand_tiers[b]:
@@ -623,16 +641,25 @@ def _solve_core(inputs: dict[str, Any], *,
                 )
 
     # Cost recovery: all energy traded at the sub-block shadow price.
-    # Storage buys its charging energy and sells its discharge.
-    rev = {"zvc": 0.0, "nuclear": 0.0, "gas": 0.0, "storage": 0.0}
+    # The T&D capacity constraint's shadow price is a network charge (per MWh
+    # injected) paid by generators and discharging storage to T&D, so each
+    # injector keeps price − network charge.  Charging storage does not use
+    # T&D capacity in the LP, so it pays the full price.
+    rev = {"zvc": 0.0, "nuclear": 0.0, "gas": 0.0, "storage": 0.0, "td": 0.0}
     opex = {"nuclear": 0.0, "gas_fuel": 0.0, "gas_carbon": 0.0}
     for b, i, lbl, sh, av in sub_blocks:
         k = sb_key(b, i)
-        e = ENERGY_CONV * sh * sb_prices[b, i]
-        rev["zvc"] += e * pulp.value(zvc[k])
-        rev["nuclear"] += e * pulp.value(nuc[k])
-        rev["gas"] += e * pulp.value(gas[k])
-        rev["storage"] += e * (pulp.value(sto_dis[k]) - pulp.value(sto_chg[k]))
+        net_chg = sb_details[b, i]["network_charge"]
+        e_price = ENERGY_CONV * sh * sb_prices[b, i]
+        e_net = ENERGY_CONV * sh * (sb_prices[b, i] - net_chg)
+        injected = (pulp.value(zvc[k]) + pulp.value(nuc[k])
+                    + pulp.value(gas[k]) + pulp.value(sto_dis[k]))
+        rev["zvc"] += e_net * pulp.value(zvc[k])
+        rev["nuclear"] += e_net * pulp.value(nuc[k])
+        rev["gas"] += e_net * pulp.value(gas[k])
+        rev["storage"] += (e_net * pulp.value(sto_dis[k])
+                           - e_price * pulp.value(sto_chg[k]))
+        rev["td"] += ENERGY_CONV * sh * net_chg * injected
         opex["nuclear"] += ENERGY_CONV * sh * nuclear_vc * pulp.value(nuc[k])
         opex["gas_fuel"] += ENERGY_CONV * sh * supply["gas_variable_cost"] * pulp.value(gas[k])
         opex["gas_carbon"] += ENERGY_CONV * sh * carbon_adder * pulp.value(gas[k])
@@ -655,7 +682,7 @@ def _solve_core(inputs: dict[str, Any], *,
         "storage": 0.0,
         "td": 0.0,
     }
-    rev_by_tech = {**rev, "td": 0.0}
+    rev_by_tech = rev
 
     cost_recovery = {
         "by_technology": {
